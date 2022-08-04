@@ -1,0 +1,16 @@
+.DS_Store
+._.DS_Store
+.Rhistory
+.Rproj.user/
+grenenet.Rproj
+
+# data
+data/
+data-raw/
+logs/
+plots/
+rdata/
+
+# scratch
+SCRATCH/
+ARCHIVE/
