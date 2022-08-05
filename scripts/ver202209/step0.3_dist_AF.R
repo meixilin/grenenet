@@ -61,7 +61,7 @@ rm(af285)
 # calculate meanaf for all data
 meanaf285_nona = rowSums(af285_nona, na.rm = TRUE)/ncol(af285_nona)
 
-png(file = 'plots/ver202209/AF/hist_meanaf285_nona.png', height = 4, width = 4, units = 'in')
+png(file = 'plots/ver202209/AF/hist_meanaf285_nona.png', height = 4, width = 4, units = 'in', res = 150)
 hist(meanaf285_nona)
 dev.off()
 

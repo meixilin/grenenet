@@ -31,7 +31,7 @@ cd ${HOMEDIR}
 
 echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID}; GIT commit id ${COMMITID}; Running ${RSCRIPT} ..."
 
-Rscript --vanilla ${RSCRIPT} &>> "logs/ver202209/${RSCRIPTNAME}.log"
+Rscript --vanilla ${RSCRIPT} &> "logs/ver202209/${RSCRIPTNAME}.log"
 
 echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID} Done"
 

@@ -7,7 +7,7 @@ sbatch_rscript() {
 }
 
 RSCRIPT="/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/step0.3_dist_AF.R"
-sbatch_rscript ${RSCRIPT}
+sbatch_rscript ${RSCRIPT} # 95478
 
 ```
 
