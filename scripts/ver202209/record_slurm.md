@@ -11,3 +11,16 @@ sbatch_rscript ${RSCRIPT} # 95478
 
 ```
 
+# fig2.1 nmds
+
+```bash
+run_rscript() {
+    local RSCRIPT=${1}
+    local RSCRIPTNAME=$(basename ${RSCRIPT/.R})
+    Rscript --vanilla ${RSCRIPT} &> "/home/mlin/safedata/meixilin/grenenet/logs/ver202209/${RSCRIPTNAME}.log"
+    echo $?
+}
+
+run_rscript "fig2.1_nmds_af.R"
+```
+
