@@ -22,5 +22,7 @@ run_rscript() {
 }
 
 run_rscript "fig2.1_nmds_af.R"
+
+run_rscript "fig2.2_nmdsSURF_af.R"
 ```
 

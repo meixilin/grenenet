@@ -37,7 +37,7 @@ calc_dist <- function(afdt, method = c('euclidean', 'nei'), filename, nsample = 
 
 
 # load data --------
-af285 = readRDS(file = './data/AF/ver202209/haplotype/AF284pSeed_0922.rds')
+af285 = readRDS(file = './data/AF/ver202209/haplotype/AF284pSeed_0922.rds') # 922975
 
 # there is missing data in two samples
 miss285 = apply(af285, 2, function(xx) {any(is.na(xx))})
