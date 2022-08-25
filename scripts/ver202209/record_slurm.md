@@ -26,3 +26,11 @@ run_rscript "fig2.1_nmds_af.R"
 run_rscript "fig2.2_nmdsSURF_af.R"
 ```
 
+# fig3 AF by environmental data
+
+## first load gff files and find the gene locations
+
+```bash
+run_rscript "step0.4_loadGFF.R"
+```
+
