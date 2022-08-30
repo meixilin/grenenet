@@ -8,7 +8,7 @@ cat("\014")
 options(echo = TRUE, stringsAsFactors = FALSE)
 
 setwd("/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet")
-sink(file = 'logs/ver202209/step1.0_loadDeltaAF.log')
+# sink(file = 'logs/ver202209/step1.0_loadDeltaAF.log')
 
 library(data.table)
 library(ggplot2)
@@ -24,29 +24,68 @@ get_coords <- function(affile) {
     return(afcoords)
 }
 
-# def variables --------
-
-# load data --------
+# AF coords --------
 # get the coordinates of the allele frequency (should be only the chr1)
 afcoords = get_coords(affile = 'data/AF/ver202209/haplotype/AF284_0922.rds')
-deltadt = data.table::fread('/carnegie/nobackup/scratch/xwu/grenet/haplotype-AF/delta_freq_table.txt')
 
+# delta freq --------
+deltadt0 = data.table::fread('/carnegie/nobackup/scratch/xwu/grenet/haplotype-AF/delta_freq_table.txt')
+dim(deltadt0)
+colnames(deltadt0) = c('siteday',afcoords)
+deltadt0[1:5,1:5]
+
+# transpose the data
+deltadt = data.table::transpose(deltadt0[,-1])
+colnames(deltadt) = deltadt0[[1]]
+deltadt[1:5,1:5]
+
+# add rownames
+deltadt = as.data.frame(deltadt)
+dim(deltadt)
+rownames(deltadt) = afcoords
+deltadt[1:5,1:5]
+
+# scale delta freq --------
 # get the starting AF
 startAF = readRDS(file = 'data/AF/ver202209/haplotype/AFSeed_0922.rds')$seed_mix
+head(startAF)
 
 # calculate the s by scaling with p(1-p)
-scalep = apply(deltadt[,-1],1,function(xx){xx/(startAF*(1-startAF))})
-scalep
+# this will automatically transpose
+scalep = apply(deltadt0[,-1],1,function(xx){xx/(startAF*(1-startAF))})
+dim(scalep)
+scalep = data.frame(scalep)
+colnames(scalep) = colnames(deltadt)
+rownames(scalep) = rownames(deltadt)
+scalep[1:5,1:5]
 
-# main --------
+# keep the unique ones --------
+deltadt_uniq = deltadt %>% dplyr::distinct()
+scalep_uniq = scalep %>% dplyr::distinct()
+
+# generate the gene coordinates --------
+genes = readRDS(file = 'data/TAIR10/Chr1_genes_gff.rds')
+
+# subset by the genes
+afcoordsi = as.integer(afcoords)
+genecoords = apply(genes, 1, function(xx) {
+    start = as.integer(xx['start'])
+    end = as.integer(xx['end'])
+    outids = afcoords[afcoordsi >= start & afcoordsi <= end]
+    return(outids)
+})
+names(genecoords) = genes$ID
 
 # output files --------
 dir.create('data/AF/ver202209/haplotype/DeltaP')
 saveRDS(afcoords, file = 'data/AF/ver202209/haplotype/SNPcoords_922975.rds')
 saveRDS(deltadt, file = 'data/AF/ver202209/haplotype/DeltaP/delta_freq.rds')
 saveRDS(scalep, file = 'data/AF/ver202209/haplotype/DeltaP/scaled_delta_freq.rds')
+saveRDS(deltadt_uniq, file = 'data/AF/ver202209/haplotype/DeltaP/delta_freq_uniq.rds')
+saveRDS(scalep_uniq, file = 'data/AF/ver202209/haplotype/DeltaP/scaled_delta_freq_uniq.rds')
+saveRDS(genecoords, file = 'data/AF/ver202209/haplotype/DeltaP/genecoords.rds')
 
 # cleanup --------
 date()
-sink()
+# sink()
 closeAllConnections()

@@ -17,6 +17,10 @@
 set -eo pipefail
 
 RSCRIPT=${1}
+INPUT1=${2}
+INPUT2=${3}
+echo ${INPUT1}
+echo ${INPUT2}
 RSCRIPTNAME=$(basename ${RSCRIPT/.R})
 
 if [ ! -f ${RSCRIPT} ]; then
@@ -31,7 +35,7 @@ cd ${HOMEDIR}
 
 echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID}; GIT commit id ${COMMITID}; Running ${RSCRIPT} ..."
 
-Rscript --vanilla ${RSCRIPT} &> "logs/ver202209/${RSCRIPTNAME}.log"
+Rscript --vanilla ${RSCRIPT} ${INPUT1} ${INPUT2} &> "logs/ver202209/${RSCRIPTNAME}_${INPUT2}.log"
 
 echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID} Done"
 
