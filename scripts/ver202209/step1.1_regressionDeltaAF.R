@@ -129,10 +129,10 @@ lmres0 = apply(deltadt, 1, function(yy) {
 colnames(lmres0) = c('AdjR2','Estimate_x','P_x')
 lmres = format_lmres(lmres0)
 head(lmres)
-table(lmres$P_pass) # number of genomic positions that poassed the
+table(lmres$P_pass) # number of genomic positions that passed the 0.001 threshold and bonferroni correction
 
 # plot the manhattan plots
-pp <- ggplot(data = lmres, aes(x = POS, y = -log10(P_x_adj), color = P_pass)) +
+pp1 <- ggplot(data = lmres, aes(x = POS, y = -log10(P_x_adj), color = P_pass)) +
     geom_point() +
     scale_color_manual(values = c('darkgray','red')) +
     geom_hline(yintercept = -log10(0.001), color = 'gray', linetype = 'dashed') +
