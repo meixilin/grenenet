@@ -18,9 +18,6 @@ set -eo pipefail
 
 RSCRIPT=${1}
 INPUT1=${2}
-INPUT2=${3}
-echo ${INPUT1}
-echo ${INPUT2}
 RSCRIPTNAME=$(basename ${RSCRIPT/.R})
 
 if [ ! -f ${RSCRIPT} ]; then
@@ -33,9 +30,9 @@ COMMITID=$(git --git-dir="${HOMEDIR}/.git" --work-tree="${HOMEDIR}/" rev-parse m
 
 cd ${HOMEDIR}
 
-echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID}; GIT commit id ${COMMITID}; Running ${RSCRIPT} ..."
+echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID}; GIT commit id ${COMMITID}; Running ${RSCRIPT} ${INPUT1}..."
 
-Rscript --vanilla ${RSCRIPT} ${INPUT1} ${INPUT2} &> "logs/ver202209/${RSCRIPTNAME}_${INPUT2}.log"
+Rscript --vanilla ${RSCRIPT} ${INPUT1} &> "logs/ver202209/${RSCRIPTNAME}_${INPUT1}.log"
 
 echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID} Done"
 
