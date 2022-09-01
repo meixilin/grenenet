@@ -50,11 +50,11 @@ subset_deltadt <- function(deltadt, mycoords) {
     return(forplot)
 }
 
-format_lmres <- function(lmres,genecoordsdt) {
+format_lmres <- function(lmres,genecoordsdt, p_adjmethods = 'bonferroni') {
     # format lmres
     Pcols = lmres %>% dplyr::select(starts_with('P_'))
     adjPcols = apply(Pcols, 2, function(xx) {
-        padj = p.adjust(xx, method = 'bonferroni')
+        padj = p.adjust(xx, method = p_adjmethods)
     })
     colnames(adjPcols) = paste0(colnames(adjPcols), '_adj')
     # only looking at the P_x_adj so far
@@ -149,7 +149,7 @@ generes = lmres %>%
     dplyr::group_by(GENES) %>%
     dplyr::summarise(P_pass_count = n()) %>%
     dplyr::arrange(desc(P_pass_count))
-head(generes)
+head(as.data.frame(generes))
 
 # plot the manhattan plots
 pcutoff = 0.001/nrow(deltadt)
@@ -184,8 +184,10 @@ ggsaver(pp2, '_MaxMinR2',4,8) # pdf will have warnings
 options(warn = 0)
 
 # TODO: beware of the high P-value
-png(filename = paste0(plotdir, prefix, envvar, '_QQplot.png'), width = 500, height = 500)
-qqman::qq(lmres$P_x)
+png(filename = paste0(plotdir, prefix, envvar, '_QQplot.png'), width = 800, height = 400)
+par(mfrow = c(1,2))
+qqman::qq(lmres$P_x, xlim = c(0,6), ylim = c(0,12))
+qqman::qq(lmres$P_x_adj, xlim = c(0,6), ylim = c(0,12))
 dev.off()
 
 # output files --------
