@@ -86,7 +86,7 @@ ggsaver <- function(pp, suffix, height, width) {
 # def variables --------
 args = commandArgs(trailingOnly=TRUE)
 envvar = as.character(args[1]) # environment variable to regress against
-
+envvar = 'bio1'
 # only use the scaled deltaP
 deltadtpath = 'data/AF/ver202209/haplotype/DeltaP/scaled_delta_freq_uniq.rds'
 prefix = 'scaled_deltaP_'
@@ -125,6 +125,7 @@ lmres0 = apply(deltadt, 1, function(yy) {
     mydata = cbind(yy, metadt)
     # lmmodel = lm(yy ~ eval(as.name(envvar)) + year + day %in% SITE + SITE, data = mydata, na.action = na.exclude)
     lmmodel = lm(yy ~ eval(as.name(envvar)) + year%in%SITE + day%in%SITE + SITE, data = mydata, na.action = na.exclude)
+    aovmodel = aov(yy ~ eval(as.name(envvar)) + year%in%SITE + day%in%SITE + SITE, data = mydata, na.action = na.exclude)
     lmsum = summary(lmmodel)
     # get overall p value
     outdt = c(lmsum$adj.r.squared,

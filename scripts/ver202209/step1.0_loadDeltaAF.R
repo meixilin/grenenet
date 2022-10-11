@@ -85,6 +85,9 @@ saveRDS(deltadt_uniq, file = 'data/AF/ver202209/haplotype/DeltaP/delta_freq_uniq
 saveRDS(scalep_uniq, file = 'data/AF/ver202209/haplotype/DeltaP/scaled_delta_freq_uniq.rds')
 saveRDS(genecoords, file = 'data/AF/ver202209/haplotype/DeltaP/genecoords.rds')
 
+# write one csv for tati
+dt = readRDS(file = 'data/AF/ver202209/haplotype/DeltaP/delta_freq.rds')
+write.csv(dt, file = 'data/AF/ver202209/haplotype/DeltaP/delta_freq.csv')
 # cleanup --------
 date()
 # sink()
