@@ -11,6 +11,19 @@ RSCRIPT="/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/v
 sbatch_rscript ${RSCRIPT} # 95478
 ```
 
+# step1.1: calculate delta AF by samples
+
+```bash
+sbatch_rscript() {
+    local RSCRIPT=${1}
+    cd /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/
+    sbatch --job-name=$(basename ${RSCRIPT/.R}) slurm_wrapper.sh ${RSCRIPT}
+}
+
+RSCRIPT="/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/step1.1_calcDeltaAF_bysample.R"
+sbatch_rscript ${RSCRIPT} # 133525
+```
+
 # fig2.1 nmds
 
 ```bash
