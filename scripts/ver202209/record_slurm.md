@@ -39,6 +39,18 @@ run_rscript "fig2.1_nmds_af.R"
 run_rscript "fig2.2_nmdsSURF_af.R"
 ```
 
+# fig3 v3 LMM models
+
+```bash
+sbatch_rscript() {
+    local RSCRIPT=${1}
+    local INPUT=${2}
+    cd /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/
+    sbatch --job-name=$(basename ${RSCRIPT/.R}) slurm_wrapper.sh ${RSCRIPT} ${INPUT}
+}
+sbatch_rscript /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/fig3v3_LMM_BySampleDeltaAF.R 'bio1' # 153370
+```
+
 # fig3 AF by environmental data
 
 ## first load gff files and find the gene locations

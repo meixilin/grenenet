@@ -3,10 +3,10 @@
 ##SBATCH --job-name=xx
 #SBATCH --output=/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/logs/ver202209/slurm_wrapper.out.txt
 #SBATCH --error=/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/logs/ver202209/slurm_wrapper.err.txt
-#SBATCH --time=08:00:00
+#SBATCH --time=23:59:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=40G
+#SBATCH --cpus-per-task=40
+#SBATCH --mem-per-cpu=1G
 
 # to submit:
 # sbatch_rscript() {
@@ -17,6 +17,7 @@
 set -eo pipefail
 
 RSCRIPT=${1}
+INPUT=${2}
 RSCRIPTNAME=$(basename ${RSCRIPT/.R})
 
 if [ ! -f ${RSCRIPT} ]; then
@@ -29,9 +30,9 @@ COMMITID=$(git --git-dir="${HOMEDIR}/.git" --work-tree="${HOMEDIR}/" rev-parse m
 
 cd ${HOMEDIR}
 
-echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID}; GIT commit id ${COMMITID}; Running ${RSCRIPT}..."
+echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID}; GIT commit id ${COMMITID}; Running ${RSCRIPT} ${INPUT}..."
 
-Rscript --vanilla ${RSCRIPT} &> "logs/ver202209/${RSCRIPTNAME}.log"
+Rscript --vanilla ${RSCRIPT} ${INPUT} &> "logs/ver202209/${RSCRIPTNAME}.log"
 
 echo -e "[$(date "+%Y-%m-%d %T")] JOB ID ${SLURM_JOBID} Done"
 

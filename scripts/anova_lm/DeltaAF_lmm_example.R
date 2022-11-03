@@ -1,8 +1,6 @@
-# Title: Run regression on the scaled deltaP files
-# Plot it for presentation. Only run linear model.
-# Update to include the possible confounding factors
+# Title: Compare anova with linear models in performances
 # Author: Meixi Lin
-# Date: Wed Aug 31 00:37:43 2022
+# Date: Tue Oct 11 11:18:33 2022
 
 # preparation --------
 rm(list = ls())
@@ -10,7 +8,7 @@ cat("\014")
 options(echo = TRUE, stringsAsFactors = FALSE)
 
 setwd("/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet")
-
+sink('./logs/DeltaAF_anova_lm_example_20221011.log')
 library(data.table)
 library(ggplot2)
 library(dplyr)
@@ -91,8 +89,7 @@ envvar = 'bio1'
 deltadtpath = 'data/AF/ver202209/haplotype/DeltaP/scaled_delta_freq_uniq.rds'
 prefix = 'scaled_deltaP_'
 
-# envvar = 'bio1'
-plotdir = paste0('plots/ver202209/AF/DeltaP_v2/', envvar, '/')
+plotdir = paste0('plots/ver202209/AF/DeltaP_v3/', envvar, '/')
 dir.create(plotdir, recursive = TRUE)
 
 # these positions should not be input for linear models
@@ -118,84 +115,37 @@ metadt = metadata[,c('SITE','DATE', 'year', 'day', envvar)] %>%
 # double check that metadt is 1-1 match to colnames
 all(metadt$siteday == colnames(deltadt))
 
+# add a column where SITE are factors
+metadt$SITE_f = factor(metadt$SITE)
+
 # main --------
-# run a linear model on everything
-lmres0 = apply(deltadt, 1, function(yy) {
-    # Account for experimental setup
-    mydata = cbind(yy, metadt)
-    # lmmodel = lm(yy ~ eval(as.name(envvar)) + year + day %in% SITE + SITE, data = mydata, na.action = na.exclude)
-    lmmodel = lm(yy ~ eval(as.name(envvar)) + year%in%SITE + day%in%SITE + SITE, data = mydata, na.action = na.exclude)
-    lmsum = summary(lmmodel)
-    # get overall p value
-    outdt = c(lmsum$adj.r.squared,
-              lmsum$coefficients["eval(as.name(envvar))","Estimate"],
-              lmsum$coefficients["eval(as.name(envvar))","Pr(>|t|)"],
-              lmsum_pval(lmsum$fstatistic))
-    return(outdt)
-}) %>% t() %>% data.frame()
-dim(lmres0)
+# moi's previous formula
+# formula= s ~ site + plot %in% site + doy + LATITUDE
 
-colnames(lmres0) = c('AdjR2','Estimate_x','P_x','P_model')
-lmres = format_lmres(lmres0,genecoordsdt)
-dim(lmres)
-head(lmres)
-tail(lmres)
-# number of genomic positions that passed the 0.001 threshold and bonferroni correction
-table(lmres$P_pass)
+# test run a linear model
+mydata = cbind(unlist(deltadt[1,]), metadt) # genomic site one
+colnames(mydata)[1] = 'yy'
 
-# tally the number of genes with significant result
-generes = lmres %>%
-    dplyr::filter(P_pass == TRUE) %>%
-    dplyr::group_by(GENES) %>%
-    dplyr::summarise(P_pass_count = n()) %>%
-    dplyr::arrange(desc(P_pass_count))
-head(as.data.frame(generes))
+lmmodel = lm(formula = yy ~ SITE_f + year%in%SITE + day + bio1,
+             data = mydata, na.action = na.exclude)
+summary(lmmodel)
+anova(lmmodel)
 
-# plot the manhattan plots
-pcutoff = 0.001/nrow(deltadt)
-pp1 <- ggplot(data = lmres, aes(x = POS, y = -log10(P_x), color = P_pass)) +
-    geom_point() +
-    scale_color_manual(values = c('darkgray','red')) +
-    geom_hline(yintercept = -log10(pcutoff), color = 'gray', linetype = 'dashed') +
-    labs(x = 'Chr1 genomic position (bp)', y = '-log10(P)', title = envvar) +
-    theme(legend.position = 'none')
+aovmodel = aov(formula = yy ~ SITE_f + year%in%SITE + day + bio1,
+               data = mydata, na.action = na.exclude)
+summary(aovmodel)
 
-# plot the example plot of allele frequency shift
-# TODO: just picked the ones with the highest R^2 and the lowest R^2
-forplot1 = subset_deltadt(deltadt, as.character(lmres[1,'POS'])) %>% dplyr::mutate(P_notpass = FALSE)
-forplot2 = subset_deltadt(deltadt, as.character(lmres[nrow(lmres),'POS'])) %>% dplyr::mutate(P_notpass = TRUE)
-forplot = bind_rows(forplot1,forplot2)
-# Add Gene info in the facet
-pp2 <- ggplot(data = forplot,
-             mapping = aes(x = .data[[envvar]], y = deltaP, color = !P_notpass)) +
-    geom_point(mapping = aes(shape = YEAR), alpha = 0.1) +
-    scale_shape_manual(values = c(1,2)) +
-    scale_color_manual(values = c('darkgray','red'), guide = 'none') +
-    facet_wrap(. ~ P_notpass, nrow = 1, labeller = labeller(P_notpass = gene_labeller(forplot,lmres))) +
-    labs(y = "\u0394p/(p0(1-p0))") +
-    stat_smooth(method = 'lm', formula = y ~ x) +
-    ggpmisc::stat_poly_eq() +
-    theme(legend.position = 'top')
+# an example on the importance of orders in anova models
+aovmodel2 = aov(formula = yy ~ bio1 + SITE_f + year%in%SITE + day,
+               data = mydata, na.action = na.exclude)
+summary(aovmodel2)
+aovmodel3 = aov(formula = yy ~ SITE_f + bio1 + year%in%SITE + day,
+                data = mydata, na.action = na.exclude)
+summary(aovmodel3)
 
-# output the figures
-ggsaver(pp1, '_manhanttan',4,8)
-options(warn = -1)
-ggsaver(pp2, '_MaxMinR2',4,8) # pdf will have warnings
-options(warn = 0)
-
-# TODO: beware of the high P-value
-png(filename = paste0(plotdir, prefix, envvar, '_QQplot.png'), width = 800, height = 400)
-par(mfrow = c(1,2))
-qqman::qq(lmres$P_x, xlim = c(0,6), ylim = c(0,12))
-qqman::qq(lmres$P_x_adj, xlim = c(0,6), ylim = c(0,12))
-dev.off()
-
-# output files --------
-rm(deltadt, forplot1, forplot2, genecoordsdt) # don't save the deltadt
-write.csv(generes, file = paste0(plotdir, prefix, envvar, '_genes.csv'))
-write.csv(lmres[lmres$P_pass, ], file = paste0(plotdir, prefix, envvar, '_lmres_Ppass.csv'))
-save.image(file = paste0(plotdir, prefix, envvar, '.RData'))
+load(file = '~/Lab/grenenet/metadata/data/ecotypes.rda')
 
 # cleanup --------
 date()
+sink()
 closeAllConnections()
