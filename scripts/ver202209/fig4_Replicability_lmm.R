@@ -18,7 +18,7 @@ library(MuMIn)
 date()
 sessionInfo()
 
-theme_set(theme_classic(base_size = 12))
+theme_set(theme_cowplot())
 
 # def functions --------
 remove_badpos <- function(dt, badpos){
@@ -35,6 +35,56 @@ remove_badpos <- function(dt, badpos){
 ggsaver <- function(pp, suffix, height, width) {
     ggsave(filename = paste0(suffix, '.pdf'), plot = pp, path = plotdir, height = height, width = width)
     ggsave(filename = paste0(suffix, '.png'), plot = pp, path = plotdir, height = height, width = width, units = 'in', dpi = 150)
+}
+
+loadSomeRData <- function(x, file) {
+    E <- new.env()
+    load(file=file, envir=E)
+    return(get(x, envir=E, inherits=F))
+}
+
+
+format_lmres <- function(lmres,genecoordsdt, p_adjmethods = 'bonferroni', p_cut = 0.05) {
+    # format lmres
+    Pcols = lmres %>% dplyr::select(starts_with('P_'))
+    adjPcols = apply(Pcols, 2, function(xx) {
+        padj = p.adjust(xx, method = p_adjmethods)
+    })
+    colnames(adjPcols) = paste0(colnames(adjPcols), '_adj')
+    # only looking at the P_x_adj so far
+    outdt = cbind(lmres, adjPcols) %>%
+        tibble::rownames_to_column(var = 'POS') %>%
+        dplyr::mutate(POS = as.integer(POS),
+                      P_pass = P_x_adj < p_cut) %>%
+        dplyr::arrange(desc(P_pass),desc(Estimate_x))
+    # find the gene coordinates
+    outdt = outdt %>%
+        dplyr::left_join(., genecoordsdt, by = 'POS')
+    return(outdt)
+}
+
+run_lmm_D1 <- function(outsite) {
+    tempmeta = metadt %>%
+        dplyr::filter(SITE != outsite)
+    tempyy = yy[names(yy) %in% tempmeta$id]
+
+    # Account for experimental setup
+    mydata = cbind(tempyy, tempmeta)
+    lmemodel = suppressMessages(
+        lmerTest::lmer(formula = tempyy ~ eval(as.name(envvar)) + (1|year) + (1|SITE_f/PLOT2),
+                       data = mydata, na.action = na.exclude))
+    # cannot keep year as a random effect because of singular fit
+    # lmemodel = lmerTest::lmer(formula = yy ~ eval(as.name(envvar)) + year + (1|SITE_f/PLOT2),
+    #                           data = mydata, na.action = na.exclude)
+    lmesum = summary(lmemodel)
+    lmer2 = MuMIn::r.squaredGLMM(lmemodel)
+    # get relevant stats
+    outdt = c(outsite,
+              lmer2,
+              lmesum$coefficients["eval(as.name(envvar))","Estimate"],
+              log10(lmesum$coefficients["eval(as.name(envvar))","Pr(>|t|)"]),
+              lmesum$AICtab)
+    return(outdt)
 }
 
 # def variables --------
@@ -71,25 +121,46 @@ all(metadt$id == colnames(deltadt))
 
 str(metadt)
 
+# load the previous lmm result
+lmres0.1 = loadSomeRData(x = 'lmres0', file = './plots/ver202209/LMM/bio1/part1/LMM_SSDAFbio1.RData')
+lmres0.2 = loadSomeRData(x = 'lmres0', file = './plots/ver202209/LMM/bio1/part2/LMM_SSDAFbio1.RData')
+lmres0 = rbind(lmres0.1,lmres0.2)
+
+lmres = format_lmres(lmres0,genecoordsdt, p_adjmethods = 'fdr', p_cut = 0.1)
+table(lmres$P_pass)
+rm(lmres0.1,lmres0.2, lmres0)
+lmresp = lmres %>%
+    dplyr::filter(P_pass == TRUE) %>%
+    dplyr::mutate(POS = as.character(POS),
+                  log10P_x = log10(P_x))
+
 # main --------
-# moi's previous formula
-# formula= s ~ site + plot %in% site + doy + LATITUDE
+# for the top models, run the leave-one-out analyses
+# run the lmm model with one site left out
+deltadtp = deltadt[rownames(deltadt) %in% lmresp$POS, ]
 
-# test run a linear model
-rowid = which(rownames(deltadt) == '7554251')
-mydata = cbind(unlist(deltadt[rowid,]), metadt) # genomic site one
-colnames(mydata)[1] = 'yy'
+for (ii in 1:nrow(lmresp)) {
+    yy = deltadtp[lmresp$POS[ii],]
 
-lmemodel = lmerTest::lmer(formula = yy ~ bio1 + (1|year) + (1|SITE_f/PLOT2),
-             data = mydata, na.action = na.exclude)
-ranef(lmemodel, drop = TRUE) # extract the random effect
-summary(lmemodel)
-anova(lmemodel)
-r.squaredGLMM(lmemodel)
+    # remove one site
+    lmml = lapply(unique(metadt$SITE), run_lmm_D1)
+    lmmD1 = lmml %>% dplyr::bind_rows()
 
-# plot fitted lmemodel
-plot(x = mydata$bio1, y = fitted(lmemodel))
-points(x = mydata$bio1, y = mydata$yy, col = 'blue')
+    colnames(lmmD1) = c('outsite','R2_x','R2_all','Estimate_x','log10P_x','REML')
+
+    forplot = lmmD1 %>%
+        reshape2::melt(., id.vars = 'outsite')
+    forplot2 = lmresp[ii, c(1, 2,3,4,10,6)] %>%
+        reshape2::melt(., id.vars = 'POS')
+
+    pp <- ggplot() +
+        geom_violin(data = forplot, aes(x = variable, y = value)) +
+        geom_point(data = forplot2, aes(x = variable, y = value), color = 'red', size = 2) +
+        facet_wrap(. ~ variable, scales = 'free', nrow = 1)
+    ggsave(filename = paste0('Replicability_lmm_POS', lmresp$POS[ii], '.png'),
+           width = 8, height = 4, plot = pp, path = plotdir)
+}
+
 
 # output files --------
 
