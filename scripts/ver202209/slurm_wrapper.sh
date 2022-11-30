@@ -5,8 +5,8 @@
 #SBATCH --error=/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/logs/ver202209/slurm_wrapper.err.txt
 #SBATCH --time=23:59:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=40
-#SBATCH --mem-per-cpu=1G
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=20G
 
 # to submit:
 # sbatch_rscript() {

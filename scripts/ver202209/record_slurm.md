@@ -49,6 +49,12 @@ sbatch_rscript() {
     sbatch --job-name=$(basename ${RSCRIPT/.R}) slurm_wrapper.sh ${RSCRIPT} ${INPUT}
 }
 sbatch_rscript /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/fig3v3_LMM_BySampleDeltaAF.R 'bio1' # 153370
+
+sbatch_rscript /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/fig3v3_LMM_BySampleDeltaAF.1.R 'bio1' 
+sbatch_rscript /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/fig3v3_LMM_BySampleDeltaAF.2.R 'bio1' 
+
+sbatch_rscript /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/fig3v3_LMM_BySampleDeltaAF.1.R 'bio8' 
+sbatch_rscript /Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/scripts/ver202209/fig3v3_LMM_BySampleDeltaAF.2.R 'bio8' 
 ```
 
 # fig3 AF by environmental data
