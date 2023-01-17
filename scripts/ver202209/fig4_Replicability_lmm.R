@@ -1,6 +1,9 @@
 # Title: Run replicability analyses using the leave-one-out method
 # Author: Meixi Lin
 # Date: Thu Oct 13 08:46:32 2022
+# Modification: Update to run the proper leave-one-out
+# Date: Mon Dec 12 13:39:29 2022
+
 
 # preparation --------
 rm(list = ls())
@@ -66,6 +69,8 @@ format_lmres <- function(lmres,genecoordsdt, p_adjmethods = 'bonferroni', p_cut 
 run_lmm_D1 <- function(outsite) {
     tempmeta = metadt %>%
         dplyr::filter(SITE != outsite)
+    biometa = metadt %>%
+        dplyr::filter(SITE == outsite)
     tempyy = yy[names(yy) %in% tempmeta$id]
 
     # Account for experimental setup
@@ -77,6 +82,7 @@ run_lmm_D1 <- function(outsite) {
     # lmemodel = lmerTest::lmer(formula = yy ~ eval(as.name(envvar)) + year + (1|SITE_f/PLOT2),
     #                           data = mydata, na.action = na.exclude)
     lmesum = summary(lmemodel)
+    lmepredict =
     lmer2 = MuMIn::r.squaredGLMM(lmemodel)
     # get relevant stats
     outdt = c(outsite,
@@ -84,6 +90,7 @@ run_lmm_D1 <- function(outsite) {
               lmesum$coefficients["eval(as.name(envvar))","Estimate"],
               log10(lmesum$coefficients["eval(as.name(envvar))","Pr(>|t|)"]),
               lmesum$AICtab)
+    # keep the
     return(outdt)
 }
 
