@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --output=/central/groups/carnegie_poc/meixilin/grenenet/analyses/logs/wrapper_averageAF.out.txt
-#SBATCH --error=/central/groups/carnegie_poc/meixilin/grenenet/analyses/logs/wrapper_averageAF.err.txt
+#SBATCH --output=/central/groups/carnegie_poc/meixilin/grenenet/analyses/logs/wrapper_averageAF_%A.out.txt
+#SBATCH --error=/central/groups/carnegie_poc/meixilin/grenenet/analyses/logs/wrapper_averageAF_%A.err.txt
 #SBATCH --time=23:59:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1

@@ -93,7 +93,7 @@ def main():
     allplots = find_plots(samples_data,site,year)
     # if there are no matches
     if len(allplots) == 0:
-        sys.stdout.write('FH_site{0}_year{1}_chr{2} has no afSite files'.format(str(site), str(year), str(chrom)))
+        sys.stdout.write('FH_site{0}_year{1}_chr{2} has no afSite files\n'.format(str(site), str(year), str(chrom)))
         sys.exit(0)
     # start iteration
     aveafdata = [] # the final output file
