@@ -85,13 +85,16 @@ outdir='/central/groups/carnegie_poc/meixilin/grenenet/analyses/data/averageAF'
 def main():
     # read parameters
     site=int(sys.argv[1])
-    year=int(sys.argv[3])
-    chrom=int(sys.argv[4]) # the chromosome to work on
+    year=int(sys.argv[2])
+    chrom=int(sys.argv[3]) # the chromosome to work on
     outaffile = '{0}/FH_site{1}_year{2}_chr{3}_averageAF.csv'.format(outdir, str(site), str(year), str(chrom))
     outafsamples = '{0}/stats/FH_site{1}_year{2}_chr{3}_averageAF.samplelist.tsv'.format(outdir, str(site), str(year), str(chrom))
     # get the available plots to iterate over for given site
     allplots = find_plots(samples_data,site,year)
-
+    # if there are no matches
+    if len(allplots) == 0:
+        sys.stdout.write('FH_site{0}_year{1}_chr{2} has no afSite files'.format(str(site), str(year), str(chrom)))
+        sys.exit(0)
     # start iteration
     aveafdata = [] # the final output file
     for myplot in allplots:
