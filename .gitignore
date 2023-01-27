@@ -4,6 +4,7 @@
 .Rhistory
 .Rproj.user/
 grenenet.Rproj
+analyses.Rproj
 
 # data
 data/
@@ -16,4 +17,3 @@ wc10/
 # scratch
 SCRATCH/
 ARCHIVE/
-Questions.md
