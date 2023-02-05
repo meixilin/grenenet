@@ -41,6 +41,7 @@ plot(plotdt$flowerscollected, plotdt$nreads,xlim = c(0,20))
 dev.off()
 
 sum(fastqcdt$coverage < 2) # 10% of all the data
+save(fastqcdt, file = 'data/fastq_check/fastqc_summary.rda')
 
 # cleanup --------
 date()
