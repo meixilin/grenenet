@@ -1,7 +1,7 @@
 # Title: Partition the data for LMM runs
 # Author: Meixi Lin
 # Date: Mon Mar  6 13:39:01 2023
-# batch job id: 176633
+# batch job id: 176634
 
 # preparation --------
 rm(list = ls())
@@ -64,21 +64,22 @@ metadt_year = base::split(metadt, metadt$year)
 samp_year = sapply(metadt_year, function(xx){xx$mergeid})
 
 # output files --------
+# output data split indices ========
+write.csv(mysplitdf, file = 'data/lmm_loo/info/coord_splits.csv')
+save(metadt_year, file = 'data/lmm_loo/info/weather_byyear.rda')
+save(samp_year, file = 'data/lmm_loo/info/mergeid_byyear.rda')
+
 # split the data by genomic locations ========
 for (ii in 1:nrow(mysplitdf)) {
     mystart = mysplitdf[ii,'start']; myend = mysplitdf[ii,'end']
     if (mystart > nrow(deltap)) {
         stop('Subscript out of bounds.')
     }
-    tempdf = deltap[mystart:myend]
-    save(tempdf, file = paste0(outdir, 'deltap_', stringr::str_pad(ii, width = 3, side = 'left', pad = '0'), 
+    # s = subset 
+    deltaps = deltap[mystart:myend]
+    save(deltaps, file = paste0(outdir, 'deltap_', stringr::str_pad(ii, width = 3, side = 'left', pad = '0'), 
                                '_', mystart, '-', myend,'.rda'))
 }
-
-# output data split indices ========
-write.csv(mysplitdf, file = 'data/lmm_loo/info/coord_splits.csv')
-save(metadt_year, file = 'data/lmm_loo/info/weather_byyear.rda')
-save(samp_year, file = 'data/lmm_loo/info/mergeid_byyear.rda')
 
 # cleanup --------
 date()
