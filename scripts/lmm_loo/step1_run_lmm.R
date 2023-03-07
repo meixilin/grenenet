@@ -38,12 +38,21 @@ deltap_byyear <- function(mydf, myyear, samp_year) {
 
 get_LRT <- function(mydata, mymodel, fixed_effects) {
     # the linear mixed effect model without the fixed effect
-    mymodel_nofix = nlme::lme(fixed = deltapp ~ 1, random = ~1|site, data = mydata, method = 'ML')
-    # the linear model
-    mymodel_lm = lm(formula = stats::as.formula(fixed_effects), data = mydata)
-    lrt_nofix = anova(mymodel,mymodel_nofix)
-    lrt_norand = anova(mymodel,mymodel_lm)
-    return(list(lrt_nofix, lrt_norand))
+    mymodel_nofix = tryCatch({
+        nlme::lme(fixed = deltapp ~ 1, random = ~1|site, data = mydata, method = 'ML')
+    }, error = function(cond) {
+        return(NULL)
+    })
+    if (is.null(mymodel_nofix)) {
+        outl = vector('list', length = 2)
+    } else {
+        # the linear model
+        mymodel_lm = lm(formula = stats::as.formula(fixed_effects), data = mydata)
+        lrt_nofix = anova(mymodel,mymodel_nofix)
+        lrt_norand = anova(mymodel,mymodel_lm)
+        outl = list(lrt_nofix, lrt_norand)
+    }
+    return(outl)
 }
 
 run_lme <- function(deltapp, metadty, modelvars) {
@@ -67,15 +76,25 @@ run_lme <- function(deltapp, metadty, modelvars) {
             # run LRT
             lrtl = get_LRT(mydata, mymodel, fixed_effects)
             lrt_nofix = lrtl[[1]]; lrt_norand = lrtl[[2]]
-            # get relevant stats
-            outdt = c(lmer2,
-                      lmesum$tTable[envvar,"Value"],
-                      lmesum$tTable[envvar,"p-value"],
-                      lmesum$BIC,
-                      lrt_nofix[2, 'L.Ratio'],
-                      lrt_nofix[2, 'p-value'],
-                      lrt_norand[2, 'L.Ratio'],
-                      lrt_norand[2, 'p-value'])
+            if (is.null(lrt_nofix)) {
+                # get relevant stats
+                outdt = c(lmer2,
+                          lmesum$tTable[envvar,"Value"],
+                          lmesum$tTable[envvar,"p-value"],
+                          lmesum$BIC,
+                          rep(NA_real_, times = 4))
+            } else {
+                # get relevant stats
+                outdt = c(lmer2,
+                          lmesum$tTable[envvar,"Value"],
+                          lmesum$tTable[envvar,"p-value"],
+                          lmesum$BIC,
+                          lrt_nofix[2, 'L.Ratio'],
+                          lrt_nofix[2, 'p-value'],
+                          lrt_norand[2, 'L.Ratio'],
+                          lrt_norand[2, 'p-value'])
+            }
+
         }
     }
     return(outdt)
@@ -129,7 +148,7 @@ lmresl <- lapply(years, function(myyear){
         stop('mergeid mismatch with weather data')
     }
     # iterate across sites
-    lmres0 = apply(deltapsy, 1, run_lme, metadty = metadty, modelvars = modelvars) %>% 
+    lmres0 = apply(deltapsy, 1, run_lme, metadty = metadty, modelvars = modelvars) %>%
         t() %>% data.table()
     lmres = format_lmres(lmres0,modelvars,mycoords,myyear)
     log_success(paste0('Done linear mixed model ', fixed_effects, ' for year = ', myyear))
