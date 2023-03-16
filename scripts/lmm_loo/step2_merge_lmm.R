@@ -25,7 +25,8 @@ padj_lmres <- function(lmres, p_adjmethods = 'fdr') {
     colnames(adjPcols) = paste0(colnames(adjPcols), '_adj')
     # only looking at the LR_nofix_p so far
     outdt = cbind(lmres, adjPcols) %>%
-        dplyr::mutate(pass_p = LR_nofix_p_adj < 0.05) %>%
+        dplyr::mutate(pass_p = LR_nofix_p_adj < 0.05,
+                      pass_rawp = LR_nofix_p < 5e-8) %>%
         dplyr::arrange(LR_nofix_p_adj,desc(R2m))
     return(outdt)
 }
