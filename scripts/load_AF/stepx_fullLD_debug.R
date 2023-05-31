@@ -77,19 +77,22 @@ write.csv(testptb, file = '/NOBACKUP/scratch/meixilin/deltap_qc/testp_tallyCHR1.
 # explain why this happened --------
 library(Rlab)
 
-# five founders, 10 SNPs
+# five founder haplotypes, 10 SNPs
+set.seed(7)
 snptable = matrix(nrow = 5, ncol = 10, data = rbern(n = 50, prob  = 0.5))
 heatmap(snptable, Rowv = NA, Colv = NA)
 
-# three sample, five haplotype frequency
-samplehap = matrix(nrow = 3, ncol = 5, data = runif(n = 15))
+# twenty sample, five haplotype frequency
+set.seed(7)
+samplehap = matrix(nrow = 20, ncol = 5, data = runif(n = 20*5))
 heatmap(samplehap, Rowv = NA, Colv = NA)
 
-# three sample, 10 SNPs
+# twenty sample, 10 SNPs (output files)
 samplesnps = samplehap %*% snptable
-sample1snps
+# in SNP positions 1 and 7, 4 and 6 the allele frequency is 100% matching across all samples. 
+# because the SNPxhaplotype table is the same across haplotypes. 
 
-# if you have the same founder vcf columns, then you are going to get the same rows in the end if you are in the same window. 
+# if you have the same founder vcf columns, then you are going to get the same rows in the end if you are in the same haplotype window, in other words, the SNPs are bined in the 100 bp window. 
 
 # cleanup --------
 date()
