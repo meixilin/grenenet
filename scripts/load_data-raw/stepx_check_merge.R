@@ -45,8 +45,10 @@ diffdf(osampdt, sampdt[,c(1,2,4)])
 # output files --------
 # PERFECT the samples are generated correctly. 
 
+# check another merged files --------
+sample_merged = read.csv(file = '/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/ath_evo/grenephase1-data/meta_table/samples_data_fix57.csv')
 
-
+cbind(samples_data[samples_data$site == 57, c('date','generation')], sample_merged[sample_merged$site == 57, 'fix_57_generation'])
 
 # cleanup --------
 date()
