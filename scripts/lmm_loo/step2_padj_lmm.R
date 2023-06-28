@@ -1,4 +1,4 @@
-# Title: Merge the results of all the runs
+# Title: Run P-value adjustments
 # Author: Meixi Lin
 # Date: Wed Mar  8 08:42:41 2023
 
@@ -31,10 +31,10 @@ padj_lmres <- function(lmres, p_adjmethods = 'fdr') {
     return(outdt)
 }
 
-
 # def variables --------
-batches = 1:299
-years = c('2018', '2019', '2020')
+# generations
+gens = c(1,2,3)
+
 nsnps = 2948475
 
 pval_loc = 'LR_nofix_p' # use the LRT output
@@ -43,17 +43,10 @@ outdir = 'data/lmm_loo/bio1/'
 
 dir.create(outdir)
 
-# iterate over years --------
-for (myyear in years) {
+# iterate over gens --------
+for (mygen in gens) {
     # load data
-    lmresl <- lapply(batches, function(mybatch) {
-        mylmresf = list.files(path = '/NOBACKUP/scratch/meixilin/grenenet/deltap_lmm', 
-                              pattern = paste0('lmeout_', stringr::str_pad(mybatch, width = 3, side = 'left', pad = '0'), '_.+_', myyear),
-                              full.names = TRUE)
-        load(mylmresf)
-        return(lmres)
-    })
-    lmresall = data.table::rbindlist(lmresl)
+    lmresall = load(paste0('./data/lmm_loo/lmeout_bio1_gen', mygen, '.rda'))
     # check nrow
     if (nrow(lmresall) != nsnps) {
         stop('Bad merging')
@@ -63,9 +56,12 @@ for (myyear in years) {
     print(head(lmeresallp[, c('CHR', 'POS', 'BIC', 'R2m', 'beta', 'LR_nofix_p_adj')]))
     
     # output files
-    save(lmeresallp, file = paste0(outdir, 'lmeout_bio1_all_', myyear, '.rda'))
+    save(lmeresallp, file = paste0(outdir, 'lmeout_bio1_all_', mygen, '.rda'))
     print(date())
 }
+
+# qqman --------
+qqman::qq(lmres$beta_p)
 
 # cleanup --------
 date()

@@ -1,6 +1,7 @@
-# Title: Run the linear mixed model (by batch)
+# Title: Run the linear mixed model
 # Author: Meixi Lin
 # Date: Mon Mar  6 14:23:46 2023
+# ARCHIVED: March 2023 version
 
 # preparation --------
 rm(list = ls())
@@ -18,20 +19,8 @@ date()
 sessionInfo()
 
 # def functions --------
-get_deltapf <- function(mybatch) {
-    mydeltapf = list.files(path = '/NOBACKUP/scratch/meixilin/grenenet/deltap_lmm', 
-                           pattern = paste0('deltap_', stringr::str_pad(mybatch, width = 3, side = 'left', pad = '0'), '_'),
-                           full.names = TRUE)
-    
-    if (length(mydeltapf) != 1) {
-        stop('File not found')
-    }
-    log_info(paste0('Loading file: ', mydeltapf))
-    return(mydeltapf)
-}
-
-deltap_byyear <- function(mydf, myyear, samp_year) {
-    mysamples = samp_year[[myyear]]
+deltap_bygen <- function(mydf, mygen, samp_gen) {
+    mysamples = samp_gen[[mygen]]
     outdf = mydf[, ..mysamples]
     return(outdf)
 }
@@ -64,7 +53,8 @@ run_lme <- function(deltapp, metadty, modelvars) {
         mydata = cbind(deltapp, metadty[,c('mergeid', 'site', envvar)])
         # the linear mixed effect model
         mymodel = tryCatch({
-            nlme::lme(fixed = stats::as.formula(fixed_effects), random = ~1|site, data = mydata, method = 'ML')
+            nlme::lme(fixed = stats::as.formula(fixed_effects), random = ~1|site, 
+                      data = mydata, method = 'ML')
         }, error = function(cond) {
             return(NULL)
         })
@@ -100,64 +90,57 @@ run_lme <- function(deltapp, metadty, modelvars) {
     return(outdt)
 }
 
-format_lmres <- function(lmres0, modelvars, mycoords, myyear) {
+format_lmres <- function(lmres0, modelvars, mygen) {
     colnames(lmres0) = modelvars
-    # plot(lmres0$beta_p, lmres0$LR_nofix_p) LRT is pretty much perfect correlation with beta p-value
-    # add chromosome info and year info
-    lmres0 = cbind(mycoords, lmres0)
-    lmres0[, 'year' := myyear]
+    lmres0[, 'gen' := mygen]
     return(lmres0)
 }
 
 # def variables --------
-args = commandArgs(trailingOnly=TRUE)
-mybatch = as.integer(args[1])
 # envvar = as.character(args[2])
 envvar = 'bio1' # only run bio1 for now
 fixed_effects = paste0('deltapp ~ ', envvar)
 print(fixed_effects)
 
-years = c('2018', '2019', '2020')
+# generations
+gens = c(1,2,3)
 
 # model variables collected
 modelvars = c('R2m', 'R2c', 'beta', 'beta_p', 'BIC', 'LR_nofix','LR_nofix_p', 'LR_norand', 'LR_norand_p')
 
-# my file to load
-mydeltap_file = get_deltapf(mybatch)
-mylmm_prefix = gsub('.rda', '', gsub('deltap_lmm/deltap', 'deltap_lmm/lmeout', mydeltap_file))
-
 # load data --------
-load(mydeltap_file)
+# load LD pruned, scaled (divided by p(1-p)), change in allele freq SNPs
+load('data-raw/snp_freq/merged_delta_p_745_ldpruned.rda')
 
-# load the batch information 
-load('data/lmm_loo/info/mergeid_byyear.rda')
-load('data/lmm_loo/info/weather_byyear.rda')
-coordid = read.csv('data/lmm_loo/info/coord_splits.csv', row.names = 1)[mybatch,]
+# load the environmental information
+load('data/lmm_loo/info/mergeid_bygen.rda')
+load('data/lmm_loo/info/weather_bygen.rda')
 
 # load the coordinates of chromosomes
-load('data/AF/seedmix_p0_231.rda')
-mycoords = p0[coordid$start:coordid$end, c('CHR', 'POS')]
-rm(p0)
+load('data-raw/snp_freq/seedmix_p0_231_ldpruned.rda')
 
 # main --------
-lmresl <- lapply(years, function(myyear){
-    deltapsy = deltap_byyear(deltaps, myyear, samp_year)
-    metadty = metadt_year[[myyear]]
+# loop through each generation
+for (mygen in gens) {
+    deltapsy = deltap_bygen(deltap_p, mygen, samp_gen)
+    metadty = metadt_gen[[mygen]]
     # confirm that colnames is matching metadt
     if (!all(metadty$mergeid == colnames(deltapsy))) {
         stop('mergeid mismatch with weather data')
     }
-    # iterate across sites
+    # iterate across genomic sites
     lmres0 = apply(deltapsy, 1, run_lme, metadty = metadty, modelvars = modelvars) %>%
         t() %>% data.table()
-    lmres = format_lmres(lmres0,modelvars,mycoords,myyear)
-    log_success(paste0('Done linear mixed model ', fixed_effects, ' for year = ', myyear))
-    # output the results by year
-    mylmm_file = paste0(mylmm_prefix, '_', myyear, '.rda')
+    lmres = format_lmres(lmres0,modelvars,mygen)
+    log_success(paste0('Done linear mixed model ', fixed_effects, 
+                       ' for gen = ', mygen, 
+                       '. n = ', ncol(deltapsy)))
+    
+    # output the results by gen
+    mylmm_file = paste0('data/lmm_loo/lmeout_', envvar, '_gen', mygen, '.rda')
     save(lmres, file = mylmm_file)
     log_info(paste0('Outputting to ', mylmm_file))
-    return(invisible())
-})
+}
 
 # output files --------
 

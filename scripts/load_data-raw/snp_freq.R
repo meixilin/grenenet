@@ -19,11 +19,16 @@ setDTthreads(6)
 
 # def variables --------
 # source data directory # 745 binned sites
+# scaled, merged allele frequency changes
 deltapf = '/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/ath_evo/grenephase1-data/snp_frequency/haf-pipe/merged_delta_p.csv'
 p0f = '/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/ath_evo/grenephase1-data/snp_frequency/haf-pipe/p0_genomewide_frequency.txt'
+
+mergepf = '/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/ath_evo/grenephase1-data/snp_frequency/haf-pipe/merged_allele_frequency.csv'
+
 # ld prune directory
 ldf = '/NOBACKUP/scratch/xwu/grenet/genomic_evolution/plink.prune.in'
 sampf = '/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/ath_evo/grenephase1-data/meta_table/merged_sample_table.csv'
+
 
 # load deltap --------
 deltap = data.table::fread(input = deltapf)
@@ -40,6 +45,9 @@ deltap[, names(deltap) := lapply(.SD, function(xx) replace(xx, is.infinite(xx), 
 allnarows = apply(deltap, 1, function(xx){all(is.na(xx))})
 all.equal(allnarows, anynarows)
 rm(anynarows)
+
+# load mergepf --------
+mergep = data.table::fread(input = mergepf, nrows = 1000)
 
 # load p0 --------
 p0 = data.table::fread(input = p0f) 
@@ -72,6 +80,7 @@ save(snp_samples, file = 'data-raw/snp_freq/snp_sampleinfo_745.rda')
 # output files --------
 # 3363913 rows x 745 columns. rows are genomic sites. columns are samples. 
 save(deltap, file = 'data-raw/snp_freq/merged_delta_p_745.rda') 
+
 # 3363913 rows x 3 columns. columns 1 and 2 are CHR and POS. column 3 is the p0 from 231 founders. 
 save(p0, file = 'data-raw/snp_freq/seedmix_p0_231.rda')
 
