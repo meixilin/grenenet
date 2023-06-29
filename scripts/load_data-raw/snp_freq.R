@@ -47,7 +47,7 @@ all.equal(allnarows, anynarows)
 rm(anynarows)
 
 # load mergepf --------
-mergep = data.table::fread(input = mergepf, nrows = 1000)
+mergep = data.table::fread(input = mergepf)
 
 # load p0 --------
 p0 = data.table::fread(input = p0f) 
@@ -72,6 +72,9 @@ setdiff(prunedloc$V1, p0$CHR_POS)
 deltap_p = deltap[prunedrow, ]
 p0_p = p0[prunedrow, ]
 
+# prune the mergep
+mergep_p = mergep[prunedrow, ]
+
 # load the sample info --------
 snp_samples = read.csv(file = sampf)
 summary(snp_samples)
@@ -90,6 +93,12 @@ save(deltap_p, file = 'data-raw/snp_freq/merged_delta_p_745_ldpruned.rda')
 # 24273 rows x 3 columns. columns 1 and 2 are CHR and POS. column 3 is the p0 from 231 founders. 
 str(p0_p)
 save(p0_p, file = 'data-raw/snp_freq/seedmix_p0_231_ldpruned.rda')
+
+# save the merged allele frequency
+save(mergep, file = 'data-raw/snp_freq/merged_p_745.rda')
+
+# save the ld pruned merged allele frequency
+save(mergep_p, file = 'data-raw/snp_freq/merged_p_745_ldpruned.rda')
 
 # plot some basics --------
 # plot histogram of p0
