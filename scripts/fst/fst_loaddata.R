@@ -96,7 +96,17 @@ save(covfst, file = 'data/fst/covfst_gen3.rda')
 mergep1 = mergep_gen[,c('55_1_10.freq', '1_1_1.freq')]
 
 
-# output files --------
+# USE THIS: output files --------
+nasamps = find_na(fstm)
+notnasamp = setdiff(dimnames(fstm)[[1]], nasamps)
+fstmf = fstm[notnasamp, notnasamp]
+fstmf[fstmf < 0] = 0
+# check if full rank
+covfst = 1 - fstmf
+qrd = qr(covfst)
+qrd$rank
+covfst = Matrix::Matrix(covfst, sparse = TRUE)
+save(covfst, file = 'data/fst/covfst_gen3.rda')
 
 # cleanup --------
 date()

@@ -37,7 +37,7 @@ load('data/lmm_loo/info/weather_bygen.rda')
 load('data-raw/snp_freq/seedmix_p0_231_ldpruned.rda')
 
 # main --------
-mygen = 1
+mygen = 3
 envvar = 'bio1'
 metadty = metadt_gen[[mygen]]
 deltapsy = deltap_bygen(deltap_p, mygen, samp_gen)
@@ -48,6 +48,7 @@ deltapsy = deltap_bygen(deltap_p, mygen, samp_gen)
 pvector1 = rep(NA, times = nrow(deltap_p))
 pvector2 = rep(NA, times = nrow(deltap_p))
 pvector3 = rep(NA, times = nrow(deltap_p))
+pvector4 = rep(NA, times = nrow(deltap_p))
 for (ii in 1:nrow(deltap_p)) {
     mydata = cbind(unlist(deltapsy[ii,]), metadty[,c('mergeid', 'site', 'bio1', 'bio2', 'bio3', 'bio4')])
     colnames(mydata)[1] = 'deltap'
@@ -81,6 +82,21 @@ for (ii in 1:nrow(deltap_p)) {
         print(cond)
         return(NULL)
     })   
+    # random intercept with per id random intercept 
+    # this give the exact same pvector as model1. Seems like 1|mergeid was ignored
+    model4 = tryCatch({
+        # nlme::lme(fixed = deltap ~ bio1, random = ~bio1|site, method = 'ML', data = mydata, 
+        # control =list(msMaxIter = 1000, msMaxEval = 1000))
+        #  (1 + bio1 || site) same as ((1|site) +(0+bio1|site))
+        # lmerTest::lmer(deltap ~ bio1 + (1 + bio1 || site), data = mydata)
+        lmerTest::lmer(deltap ~ bio1 + (1|site) + (1|mergeid), data = mydata,
+                       control=lmerControl(check.nobs.vs.nlev = "ignore",
+                                           check.nobs.vs.rankZ = "ignore",
+                                           check.nobs.vs.nRE="ignore"))
+    }, error = function(cond) {
+        print(cond)
+        return(NULL)
+    })   
     # 
     # pvector1[ii] = ifelse(is.null(model1), NA, summary(model1)$tTable['bio1', 'p-value'])
     # pvector2[ii] = ifelse(is.null(model2), NA, summary(model2)$tTable['bio1', 'p-value'])
@@ -88,13 +104,15 @@ for (ii in 1:nrow(deltap_p)) {
     pvector1[ii] = ifelse(is.null(model1), NA, summary(model1)$coefficients['bio1', 'Pr(>|t|)'])
     pvector2[ii] = ifelse(is.null(model2), NA, summary(model2)$coefficients['bio1', 'Pr(>|t|)'])
     pvector3[ii] = ifelse(is.null(model3), NA, summary(model3)$coefficients['bio1', 'Pr(>|t|)'])
+    pvector4[ii] = ifelse(is.null(model4), NA, summary(model4)$coefficients['bio1', 'Pr(>|t|)'])
 }
 
-pdf(file = './data/lmm_loo/lmm_randomslope.pdf', width = 12, height = 4)
-par(mfrow = c(1,3))
+pdf(file = './data/lmm_loo/lmm_randomslope.pdf', width = 8, height = 8)
+par(mfrow = c(2,2))
 qqman::qq(pvector1, main = 'deltap ~ bio1 + (1|site)')
 qqman::qq(pvector2, main = 'deltap ~ bio1 + (1 + bio1 || site)')
 qqman::qq(pvector3, main = 'deltap ~ bio1 + bio2 + bio3 + bio4 + (1|site)')
+qqman::qq(pvector4, main = 'deltap ~ bio1 + (1|site) + (1|mergeid)')
 dev.off()
 
 # output files --------

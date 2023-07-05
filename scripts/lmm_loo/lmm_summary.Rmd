@@ -1,0 +1,17 @@
+---
+title: "linear mixed model"
+output: ioslides_presentation
+date: '2023-07-05'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Linear mixed model
+
+-linear model
+
+$$
+y = Xb + a
+$$
