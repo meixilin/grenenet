@@ -5,6 +5,7 @@
 .Rproj.user/
 grenenet.Rproj
 analyses.Rproj
+*.html
 
 # data
 data/

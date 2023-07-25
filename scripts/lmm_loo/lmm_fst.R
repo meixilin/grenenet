@@ -28,7 +28,7 @@ deltap_bygen <- function(mydf, mygen, samp_gen) {
 
 # def variables --------
 mygen = 3
-envvar = 'bio1'
+envvar = 'bio1' 
 
 # load data --------
 # load LD pruned, scaled (divided by p(1-p)), change in allele freq SNPs
@@ -44,9 +44,10 @@ load('data-raw/snp_freq/seedmix_p0_231_ldpruned.rda')
 # load the fst matrix
 load('data/fst/covfst_gen3.rda')
 
-heatmaply(as.matrix(covfst), Rowv = NA, Colv = NA)
+# heatmaply(as.matrix(covfst), Rowv = NA, Colv = NA)
 
 # main --------
+# only include samples 
 mysamp = dimnames(covfst)[[1]]
 metadty = metadt_gen[[mygen]] %>% 
     dplyr::filter(mergeid %in% mysamp)
@@ -56,33 +57,46 @@ deltapsy = deltap_p[,..mysamp]
 all(colnames(deltapsy) == metadty$mergeid)
 all(colnames(deltapsy) == mysamp)
 
-# get nearPD
-covfst1 = nearPD(covfst)
-covfsti = covfst1$mat
-
-heatmaply(as.matrix(covfst), Rowv = NA, Colv = NA)
+# deltap_p = deltap_p[1:10,]
 
 # get pvalues --------
-# if set up things as having random slopes as well, then we get singular fit
 pvector1 = rep(NA, times = nrow(deltap_p))
 pvector2 = rep(NA, times = nrow(deltap_p))
+pvector3 = rep(NA, times = nrow(deltap_p))
+pvector4 = rep(NA, times = nrow(deltap_p))
 for (ii in 1:nrow(deltap_p)) {
     mydata = cbind(unlist(deltapsy[ii,]), metadty[,c('mergeid', 'site', 'bio1', 'bio2', 'bio3', 'bio4')])
     colnames(mydata)[1] = 'deltap'
-    m0 = lme4qtl::relmatLmer(deltap ~ (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfsti), REML = FALSE)
-    m1 = lme4qtl::relmatLmer(deltap ~ bio1 + (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfsti), REML = FALSE)
-    a1 = anova(m0,m1)
-    m00 = lme4::lmer(deltap ~ (1|site), data = mydata, REML = FALSE)
-    m01 = lme4::lmer(deltap ~ bio1 + (1|site), data = mydata, REML = FALSE)
-    a01 = anova(m00, m01)
+    # model 1
+    m01 = lme4qtl::relmatLmer(deltap ~ (1|site), data = mydata, REML = FALSE)
+    m11 = lme4qtl::relmatLmer(deltap ~ bio1 + (1|site), data = mydata, REML = FALSE)
+    a1 = anova(m01, m11)
+    # model 2
+    m02 = lme4qtl::relmatLmer(deltap ~ (1|site) + (1|mergeid), data = mydata, REML = FALSE)
+    m12 = lme4qtl::relmatLmer(deltap ~ bio1 + (1|site) + (1|mergeid), data = mydata, REML = FALSE)
+    a2 = anova(m02,m12)
+    # model 3
+    m03 = lme4qtl::relmatLmer(deltap ~ (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfst), REML = FALSE)
+    m13 = lme4qtl::relmatLmer(deltap ~ bio1 + (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfst), REML = FALSE)
+    a3 = anova(m03,m13)
+    
+    # model 4
+    m04 = lme4qtl::relmatLmer(deltap ~ bio2 + bio3 + bio4 + (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfst), REML = FALSE)
+    m14 = lme4qtl::relmatLmer(deltap ~ bio1 + bio2 + bio3 + bio4 + (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfst), REML = FALSE)
+    a4 = anova(m04,m14)  
+    # only get p vectors for now
     pvector1[ii] = a1$`Pr(>Chisq)`[2]
-    pvector2[ii] = a01$`Pr(>Chisq)`[2]
+    pvector2[ii] = a2$`Pr(>Chisq)`[2]
+    pvector3[ii] = a3$`Pr(>Chisq)`[2]
+    pvector4[ii] = a4$`Pr(>Chisq)`[2]
 }
 
-pdf(file = './data/lmm_loo/lmm_fst.pdf', width = 8, height = 4)
-par(mfrow = c(1,2))
-qqman::qq(pvector1, main = 'deltap ~ bio1 + (1|site) + (1|mergeid)')
-qqman::qq(pvector2, main = 'deltap ~ bio1 + (1|site)')
+pdf(file = './data/lmm_loo/lmm_fst.pdf', width = 8, height = 8)
+par(mfrow = c(2,2))
+qqman::qq(pvector1, main = 'deltap ~ bio1 + (1|site)')
+qqman::qq(pvector2, main = 'deltap ~ bio1 + (1|site) + (1|mergeid)')
+qqman::qq(pvector3, main = 'deltap ~ bio1 + (1|site) + (1|mergeid) [covfst]')
+qqman::qq(pvector4, main = 'deltap ~ bio1~4 + (1|site) + (1|mergeid) [covfst]')
 dev.off()
 
 # output files --------

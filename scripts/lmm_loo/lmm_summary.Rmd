@@ -1,17 +1,492 @@
 ---
-title: "linear mixed model"
-output: ioslides_presentation
-date: '2023-07-05'
+title: "linear mixed model summary"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+date: '2023-07-19'
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+rm(list = ls())
+
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_knit$set(root.dir = '/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/analyses/')
+
+rootdir = '/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/analyses/'
+
+library(ggplot2)
+library(dplyr)
+library(data.table)
+library(viridis)
+library(Matrix)
+library(GenomicRanges)
 ```
 
-# Linear mixed model
 
--linear model
+# The maths
+## Linear model
 
 $$
-y = Xb + a
+y = X\beta + \varepsilon
 $$
+
+- $y$: $N \times 1$ column vector. 
+    - the scaled allele frequency changes $\Delta p / p(1-p)$ . 
+- $X$: $N \times p$ prediction vectors.
+- $\beta$: $p \times 1$ fixed effects. 
+    - $\beta \sim N(\mu, \sigma)$. 
+- $\varepsilon$: $N \times 1$ the residuals.
+    - $R = I\sigma^2_\varepsilon$. Independent and homogeneous residuals. 
+
+## Linear mixed model
+
+$$
+y = X\beta + Zu + \varepsilon
+$$
+
+- $Z$: $N \times qJ$ design matrix. $q$, number of random effects. $J$, number of random effect groups. 
+- $u$: $qJ \times 1$ the random effects. 
+    - $u \sim N(0, G)$. 
+- $G$: $q \times q$ variance-covariance matrix of the random effects. 
+    - Only one random intercept, $G$ is $1\times1$ matrix, the variance of the random intercept. 
+    - Random intercept & slope, $G$ is $2\times2$ matrix.
+
+    
+$$
+    G = 
+    \begin{bmatrix}
+    \sigma^2_{int} & \sigma^2_{int,slope} \\
+    \sigma^2_{int,slope} & \sigma^2_{slope}
+    \end{bmatrix}
+$$
+
+
+### multiple random effects
+
+$$
+Zu = Z_1u_1 + Z_2u_2 + ... + Z_qu_q
+$$
+
+- $Z_q$: $N \times J_q$ the $q$st random effect's design matrix. 
+
+# The model set up
+
+- All models were set up per generation. dimension taken from generation 3. 
+- Model significance evaluated by anova with null/alternative models. 
+
+```r
+    m02 = lme4qtl::relmatLmer(deltap ~ (1|site) + (1|mergeid), data = mydata, REML = FALSE)
+    m12 = lme4qtl::relmatLmer(deltap ~ bio1 + (1|site) + (1|mergeid), data = mydata, REML = FALSE)
+    a2 = anova(m02,m12)
+```
+
+```{r load data}
+load('data/fst/covfst_gen3.rda')
+load('../metadata/data/merged_samples_data.rda')
+subdt = merged_samples_data[merged_samples_data$sample_name %in% covfst@Dimnames[[1]], ]
+jval = length(unique(subdt$site))
+```
+
+## model1
+
+$$
+y = X\beta + Z_1u_1 + \varepsilon
+$$
+
+```
+deltap ~ bio1 + (1|site)
+```
+
+|symbol|dim|variable|
+|------|---|--------|
+|$N$|182|number of samples with fst|
+|$p$|2|intercept,bio1|
+|$q$|1|one random effect, site|
+|$J$|`r jval`|one random effect, site|
+|$y$|182x1|scaled deltap|
+|$X$|182x2|[1,bio1] per sample|
+|$\beta$|2x1|intercept and slope|
+|$Z_1$|182x20|design matrix, column is sitename, 0/1 sparse|
+|$u_1$|20x1|random intercept estimated for each site|
+
+- $u_1 \sim N(0,G_1)$, $G_1$ is a $1x1$ matrix, the variance of random intercept for site effects.
+
+## model2
+
+
+$$
+y = X\beta + Z_1u_1 + Z_2u_2+ \varepsilon
+$$
+
+```
+deltap ~ bio1 + (1|site) + (1|mergeid)
+```
+
+|symbol|dim|variable|
+|------|---|--------|
+|$N$|182|number of samples with fst|
+|$p$|2|intercept,bio1|
+|$q$|2|two random effect, site and merged sample|
+|$J_1$|`r jval`|1st random effect, site|
+|$J_2$|`r nrow(subdt)`|2rd random effect, merged sample|
+|$y$|182x1|scaled deltap|
+|$X$|182x2|[1,bio1] per sample|
+|$\beta$|2x1|intercept and slope|
+|$Z_1$|182x20|design matrix, column is sitename, 0/1 sparse|
+|$u_1$|20x1|random intercept estimated for each site|
+|$Z_2$|182x182|design matrix, identity matrix indicating merged sample|
+|$u_2$|182x1|random intercept estimated for each sample|
+
+- $u_2 \sim N(0,G_2)$, $G_2$ is a $1x1$ matrix, the variance of random intercept for merged sample effects.
+
+
+## model3
+
+
+$$
+y = X\beta + Z_1u_1 + Z_2u_2+ \varepsilon
+$$
+
+```
+deltap ~ bio1 + (1|site) + (1|mergeid), relmat = list(mergeid = covfst)
+```
+
+- $u_2 \sim N(0,G_2)$, $G_2$ is a $182x182$ matrix, the variance of random intercept for merged sample effects.
+- $G_2 = \sigma^2_g A_2$,  $A_2$ is a genetic additive relationship matrix. 
+- $A_2$ in this case, is `1-Fst` pairwise genetic similarity matrix, (with some modifications). 
+
+
+## model4
+
+
+$$
+y = X\beta + Z_1u_1 + Z_2u_2+ \varepsilon
+$$
+
+
+```
+deltap ~ bio1 + bio2 + bio3 + bio4 + (1|site) + (1|mergeid), relmat = list(mergeid = covfst)
+```
+
+
+|symbol|dim|variable|
+|------|---|--------|
+|$N$|182|number of samples with fst|
+|$p$|5|intercept,bio1,bio2,bio3,bio4|
+|$q$|2|two random effect, site and merged sample|
+|$J_1$|`r jval`|1st random effect, site|
+|$J_2$|`r nrow(subdt)`|2rd random effect, merged sample|
+|$y$|182x1|scaled deltap|
+|$X$|182x5|[1,bio1,bio2,bio3,bio4] per sample|
+|$\beta$|5x1|intercept and slope for each bio1-bio4 variable|
+|$Z_1$|182x20|design matrix, column is sitename, 0/1 sparse|
+|$u_1$|20x1|random intercept estimated for each site|
+|$Z_2$|182x182|design matrix, identity matrix indicating merged sample|
+|$u_2$|182x1|random intercept estimated for each sample|
+
+- $u_2 \sim N(0,G_2)$, $G_2$ is a $182x182$ matrix, the variance of random intercept for merged sample effects.
+- $G_2 = \sigma^2_g A_2$,  $A_2$ is a genetic additive relationship matrix. 
+- $A_2$ in this case, is `1-Fst` pairwise genetic similarity matrix, (with some modifications). 
+
+# Side note: the Fst calculations
+
+## grenedalf inputs
+
+```bash
+# merged allele frequency
+/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/ath_evo/grenephase1-data/snp_frequency/haf-pipe/merged_allele_frequency.csv
+# ld pruned alleles
+/NOBACKUP/scratch/xwu/grenet/genomic_evolution/plink.prune.in
+# merged allele frequencies were read and ld pruned
+Rscript --vanilla ./scripts/load_data-raw/snp_freq.R
+# grenedalf commands
+grenedalf fst --window-type=genome --method=unbiased-nei \
+--frequency-table-path mergep_gen3.csv --pool-sizes nflowers_gen3.txt --file-suffix _gen3
+```
+
+## the output Fst matrix
+
+[fst_gen3]("/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/analyses/data/fst/plots/fst_gen3.html")
+
+### is within site Fst smaller than across site Fst? 
+
+- mean FST across sites is the highest at sites 11 and 55. 
+
+```{r within site Fst}
+ff = as.matrix(read.csv(paste0(rootdir, './data/fst/fst-matrix_gen3.csv'), row.names = 1))
+dimnames(ff)[[2]] = dimnames(ff)[[1]]
+mysamples = dimnames(covfst)[[1]]
+fst_gen3 = ff[rownames(ff) %in% mysamples, colnames(ff) %in% mysamples]
+fst_gen3 = data.frame(fst_gen3) %>% 
+    tibble::rownames_to_column(.,var = 'first') %>% 
+    reshape2::melt(., variable.name = 'second', value.name = 'FST') %>% 
+    dplyr::mutate(second = stringr::str_remove(second, 'X'))
+
+first_site = reshape2::colsplit(fst_gen3$first, '_', c('first_site','gen','plot'))[,1]
+second_site = reshape2::colsplit(fst_gen3$second, '_', c('second_site','gen','plot'))[,1]
+fst_gen3 = cbind(fst_gen3, first_site, second_site)
+fst_gen3 = data.table(fst_gen3)
+meanfst3 = fst_gen3[, .(meanFST = mean(FST, na.rm = TRUE)), by = .(first_site, second_site)]
+```
+
+
+```{r mean Fst}
+ggplot(data = meanfst3, aes(x = as.factor(first_site), y = as.factor(second_site), fill = meanFST)) +
+    geom_tile() +
+    scale_fill_viridis()
+```
+
+- median FST across sites is still the highest in site 11.
+
+```{r within site median Fst}
+medianfst3 = fst_gen3[, .(medianFST = median(FST, na.rm = TRUE)), by = .(first_site, second_site)]
+pp = ggplot(data = medianfst3, aes(x = as.factor(first_site), y = as.factor(second_site), fill = medianFST)) +
+    geom_tile() +
+    scale_fill_viridis()
+print(pp)
+```
+
+- Some sites have lower within-site FST compared to between-site FST. For example, sites 4, 5, 9, 10.
+- Some sites have similar within-site FST compared to between-site FST. For example, sites 55, 57. 
+
+```{r wtn btw site comparisons}
+fst_gen3[, within_site := first_site == second_site]
+ggplot(fst_gen3, aes(x = as.factor(first_site), y = FST, color = within_site)) +
+    geom_boxplot()
+```
+
+### Fst values with flower counts and histograms
+
+- More variations in lower flower numbers. 
+- Most samples had low Fst overall. 
+- All Fst < 0 values were converted to Fst = 0.
+
+```{r fst output, out.width='800px', out.height='400px'}
+knitr::include_graphics(paste0(rootdir, "data/fst/plots/fst_histflower_gen3.pdf"))
+```
+
+## near positive definite Fst derived matrix for variance covariance (vcv) matrix
+
+- `covfst = 1 - fst`
+- Raw `covfst` vcv matrix is not positive semidefinite.
+- `Matrix::nearPD` function was used to convert matrix to a vcv compliant matrix. 
+
+```{r nearPD fst, out.width='400px', out.height='400px'}
+knitr::include_graphics(paste0(rootdir, "data/fst/plots/nearPD_fst_gen3.png"))
+```
+
+### Final vcv matrix
+
+- The variance-covariance input for `1|mergeid`
+- Most sites are highly genetically similar (low Fst values)
+
+```{r nearPD fst vis, fig.height=8}
+load('data/fst/covfst_gen3.rda')
+gplots::heatmap.2(as.matrix(covfst), Rowv = FALSE, Colv = FALSE, dendrogram = 'none', trace = 'none')
+```
+
+# The linear mixed model results 
+
+## Diagnostic plots
+### QQ plots from four models
+
+- Including the variance covariance structure in linear mixed models changed the pvectors
+- Adding more explanatory variables does not change the pvectors
+- Without the variance covariance structure, models 1 and 2 were very similar. 
+    - (As expected since the `1|mergeid` could be part of the residuals)
+
+```{r lmm output, fig.height=8}
+load('data/lmm_loo/lmm_fst.RData')
+par(mfrow = c(2,2))
+qqman::qq(pvector1, main = 'deltap ~ bio1 + (1|site)')
+qqman::qq(pvector2, main = 'deltap ~ bio1 + (1|site) + (1|mergeid)')
+qqman::qq(pvector3, main = 'deltap ~ bio1 + (1|site) + (1|mergeid) [covfst]')
+qqman::qq(pvector4, main = 'deltap ~ bio1~4 + (1|site) + (1|mergeid) [covfst]')
+
+# nearly identical pvectors2 and 1
+plot(x = pvector1, y = pvector2)
+```
+
+### QQ plots with the same axis
+
+- When you zoom in on the slope of qqplot,the amount of deviation from null hypothesis is enlarged in model3 compared with model1. 
+
+```{r lmm output2}
+par(mfrow = c(2,2))
+qqman::qq(pvector1, xlim = c(0,5), ylim = c(0,5), main = 'deltap ~ bio1 + (1|site)')
+qqman::qq(pvector2, xlim = c(0,5), ylim = c(0,5), main = 'deltap ~ bio1 + (1|site) + (1|mergeid)')
+qqman::qq(pvector3, xlim = c(0,5), ylim = c(0,5), main = 'deltap ~ bio1 + (1|site) + (1|mergeid) [covfst]')
+qqman::qq(pvector4, xlim = c(0,5), ylim = c(0,5), main = 'deltap ~ bio1~4 + (1|site) + (1|mergeid) [covfst]')
+```
+
+## Example full linear mixed model output with the lowest p-value in model3
+
+```
+deltap ~ bio1 + (1|site) + (1|mergeid), relmat = list(mergeid = covfst)
+```
+
+```{r lmm residual, echo=TRUE}
+ii = which(pvector3 == min(pvector3))
+mydata = cbind(unlist(deltapsy[ii,]), metadty[,c('mergeid', 'site', 'bio1', 'bio2', 'bio3', 'bio4')])
+colnames(mydata)[1] = 'deltap'
+
+m03 = lme4qtl::relmatLmer(deltap ~ (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfst), REML = FALSE)
+m13 = lme4qtl::relmatLmer(deltap ~ bio1 + (1|site) + (1|mergeid), data = mydata, relmat = list(mergeid = covfst), REML = FALSE)
+# model summary
+summary(m13)
+# anova for p-value
+a3 = anova(m03,m13)
+a3
+
+# heritability estimates
+lme4qtl::VarProp(m13)
+
+# residual plots: Residual plots for the model is normal-ish
+r <- residuals(m13)
+qqnorm(r);qqline(r)
+```
+
+## Manhattan plots for model 3
+
+```
+deltap ~ bio1 + (1|site) + (1|mergeid), relmat = list(mergeid = covfst)
+```
+
+```{r manhattan, fig.height=8}
+load('data-raw/snp_freq/seedmix_p0_231_ldpruned.rda')
+pcorrect3 = p.adjust(pvector3, method = 'bonferroni')
+plotdt = cbind(p0_p[, c('CHR', 'POS')], pvector3, pcorrect3) 
+plotdt$id = 1:nrow(plotdt)
+plotdt = plotdt %>% 
+    dplyr::mutate(psig = pcorrect3 < 0.05)
+
+ggplot(plotdt, aes(x = POS, color = psig, y = -log10(pvector3))) + 
+    geom_point() + 
+    facet_wrap(. ~ CHR, ncol = 1, scales = 'free_x') +
+    cowplot::theme_cowplot()
+``` 
+
+### The genomic sites that were identified as significant in model3
+
+```{r sig sites, width=999}
+# convert a snp to grange
+snp2grange <- function(df) {
+    out = GenomicRanges::GRanges(
+        seqnames = paste0('Chr',df['CHR']),
+        ranges=IRanges(start = df['POS'], end = df['POS'])
+    )
+    return(out)
+}
+
+inrange <- function(xx, geneGR) {
+    overlaps = GenomicRanges::findOverlaps(xx, geneGR, type = 'within')
+    if (length(geneGR[to(overlaps)]) == 0){
+        return(NA)
+    } else{
+        return(geneGR[to(overlaps)]$ID)
+    }
+}
+
+sigdt = plotdt %>% 
+    dplyr::filter(psig == TRUE)
+sigdtGR = apply(sigdt, 1, snp2grange)
+
+# load gene df
+geneGR = readRDS(file = './data/TAIR10/TAIR10_genesGR_gff.rds')
+
+# extract overlaps
+sigdt$geneID = unlist(lapply(sigdtGR, inrange, geneGR = geneGR))
+sigdt$geneName = c(NA,NA, 'flocculation protein (DUF1296)', 'ATFAD7 (FATTY ACID DESATURASE 7)','GFS12 (GREEN FLUORESCENT SEED 12)', NA, 'Protein kinase superfamily protein')
+sigdt
+```
+
+
+### Comparing the sites that were classified as signifcant in model1 and model3 (with/without the "kinship matrix")
+
+- Different genomic sites were classified as significant across model1 and model3
+- In model 1, only one SNP on chromosome 2 is significant after bonferroni correction. 
+    - This SNP was not classified as siginificant in model 3.
+
+```{r compare model1 and 3, fig.height=4,fig.width=12}
+pcorrect1 = p.adjust(pvector1, method = 'bonferroni')
+plotdt3 = cbind(plotdt, pcorrect1,pvector1) 
+plotdt3 = reshape2::melt(plotdt3, id.vars = c('CHR', 'POS'), measure.vars = c('pvector1', 'pvector3')) %>% 
+    dplyr::mutate(variable = ifelse(variable == 'pvector1', 'model1', 'model3'))
+
+ggplot(plotdt3, aes(x = POS, color = value < 0.05/24273, y = -log10(value))) + 
+    geom_point(size = 1) + 
+    facet_grid(variable ~ CHR, scales = 'free_x') +
+    labs(color = 'psig') + 
+    cowplot::theme_cowplot() + 
+    theme(axis.text.x = element_text(angle = 90))
+```
+
+
+## Side note: does different methods of obtaining p-values matter? 
+
+- linear mixed model is hard to generate 'p-values', see `help('pvalues', package = 'lme4')`. 
+- Two ways were tested in terms of finding significant correlations in **model1** (`deltap ~ bio1 + 1|site`). 
+    - lmerTest method
+    - lme4qtl + anova method
+- The lmerTest method (used a slightly different method for determining degrees of freedom for F-tests) is less conservative.
+- But both methods identified similar top5 most significant sites. Less significant sites are less consistently detected. 
+- I can't get the lmerTest method to work with lme4qtl with a covariance structure. 
+    
+```{r different pval}
+loadSomeRData <- function(x, file) {
+    E <- new.env()
+    load(file=file, envir=E)
+    return(get(x, envir=E, inherits=F))
+}
+
+# it mattered a bit. 
+pvec_lmerTest = loadSomeRData('pvector1', 'data/lmm_loo/lmm_randomslope.RData')
+plot(log10(pvec_lmerTest), log10(pvector1))
+
+# comparing qqplots
+par(mfrow = c(1,2))
+qqman::qq(pvec_lmerTest, main = 'lmerTest')
+qqman::qq(pvector1, main = 'lme4qtl + anova')
+
+# comparing manhattan plots
+pcor_lmerTest = p.adjust(pvec_lmerTest, method = 'bonferroni')
+pcorrect1 = p.adjust(pvector1, method = 'bonferroni')
+plotdt2 = cbind(p0_p[, c('CHR', 'POS')], pcorrect1, pvector1, pcor_lmerTest, pvec_lmerTest) %>% 
+    dplyr::mutate(psig_lmerTest = pcor_lmerTest < 0.05,
+                  psig1 = pcorrect1 < 0.05,
+                  prank_lmerTest = rank(pvec_lmerTest),
+                  prank1 = rank(pvector1))
+table(plotdt2[,c('psig1','psig_lmerTest')])
+plotdt2 %>%
+    dplyr::filter(prank1 < 6 | prank_lmerTest < 6) %>% 
+    dplyr::arrange(prank1)
+```
+
+# Comparisons with GWAS models
+
+$$
+y = X\beta + u + \varepsilon
+$$
+
+
+|var|GWAS|this model|
+|--------|----|----|
+|$y$|trait|$\Delta p / p(1-p)$|
+|$X$|genotype(0/1/2)|environment|
+|$\beta$|fixed effects|---|
+|$u$|$u \sim N(0,\sigma^2_gK)$|---|
+|$K$|kinship matrix|1-pairwise Fst|
+
+
+# Conclusion
+
+- Adding another random effect term with custom covariance matrices determined by fst matrix changed the p-values of the fixed effects.
+    - The significant results had higher p-values, therefore the QQ plot looks closer to the null expectation. 
+    - However, when you zoom into the same scale, there is similar levels of deviation between the model p-values and the null expectation in both model1 (without considering population structure), and model3.
+- The linear mixed model considering custom covariance matrices may have provided some insights for identifying adaptive alleles. 
+    - However, the significant sites identified were not consistent between model1 and model3. 
+- Next steps: 
+    - Should we try some other variance-covariance structure for each sample? 
+    - Should we move towards the GWAS perspective of detecting adaptation signals and use `bio1 ~ deltap` per ecotype to better control for population structure? 
+
