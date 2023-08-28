@@ -73,10 +73,10 @@ plot_vs <- function(alldf, myenv) {
                            color = pass_both, shape = as.factor(generation))) + 
         geom_point() + 
         scale_color_manual(values = c('lightgray', 'darkgreen')) + 
-        labs(x = 'ecotypeid', y = 'Vs', shape = 'generation', title = myenv, color = 'R2 > 0.15 & P < 0.05') +  
+        labs(x = 'ecotypeid', y = '-1/Vs', shape = 'generation', title = myenv, color = 'R2 > 0.15 & P < 0.05') +  
         theme(axis.text.x = element_text(angle = 90, size = 4),
               legend.position = 'top')
-    ggsave(filename = paste0('vs_', myenv, '.png'), plot = pp, path = plotdir, height = 4, width = 8)
+    ggsave(filename = paste0('vs_', myenv, '.pdf'), plot = pp, path = plotdir, height = 4, width = 8)
     return(invisible())
 }
 
@@ -87,12 +87,12 @@ plot_map_vs <- function(plotdf, myenv, mygen) {
     pp <- ggplot() +
         geom_polygon(data = wrld_simpl, aes(x = long, y = lat, group = group), fill = "lightgray", colour = "gray") +
         geom_point(data = mydf, 
-                   mapping = aes(x = longitude, y = latitude, color = b_env, shape = pass_both),
+                   mapping = aes(x = longitude, y = latitude, color = (-1/b_env), shape = pass_both),
                    size = 2) + 
         # Convert to polar coordinates
         # coord_map("ortho", orientation = c(90, 0, 0)) +
         # scale_y_continuous(breaks = seq(0, 90, by = 30), labels = NULL) +
-        scale_colour_gradient(low = 'darkgreen', high = 'white') +
+        scale_colour_gradient(low = 'white', high = 'darkgreen', trans = 'pseudo_log') +
         # Removes Axes and labels
         # scale_x_continuous(breaks = NULL) +
         coord_cartesian(xlim = c(-24, 89), ylim = c(15,64)) + 
@@ -102,8 +102,8 @@ plot_map_vs <- function(plotdf, myenv, mygen) {
                                               colour = "black"),
               axis.ticks=element_blank(),
               axis.line = element_blank())
-    ggsave(filename = paste0('mapvs_', myenv, 'gen', mygen, '.png'), plot = pp, path = plotdir, height = 4, width = 8)
-    return(invisible())
+    ggsave(filename = paste0('mapvs_', myenv, 'gen', mygen, '.pdf'), plot = pp, path = plotdir, height = 4, width = 8)
+    return(pp)
 }
 
 plot_bestfit <- function(alldf, myenv, mygen) {
@@ -161,7 +161,7 @@ deltaenv = lapply(1:nrow(worldclim_ecotypesdata), function(ii) {
 
 # run linear model for each ecotype, each bioclim var 
 alldf = data.frame()
-envvars = envvars[c(1:19, 104:105)]
+# envvars = envvars[c(1:19, 104:105)]
 envvars = 'bio1'
 for (myenv in envvars) {
     for (mygen in generations) {
@@ -180,13 +180,24 @@ for (myenv in envvars) {
 alldf = alldf %>% 
     dplyr::mutate(pass_r2 = adj_r2 > 0.15,
                   pass_bp = b_p < 0.05/nrow(alldf),
-                  pass_both = pass_r2 & pass_bp) 
+                  pass_both = pass_r2 & pass_bp,
+                  vs = -1/b_env,
+                  vs_pos = vs > 0) 
 head(alldf)
 
 lmressum = alldf %>% 
     dplyr::group_by(envvar, generation) %>% 
     dplyr::summarise(n_passr2 = sum(pass_r2, na.rm = T),
+
                      max_r2 = max(adj_r2, na.rm = T)) 
+
+alldf %>% 
+    dplyr::group_by(envvar, generation) %>% 
+    dplyr::summarise(n_vs_pos = sum(vs_pos, na.rm = T),
+                     total_ecotypes = n(),
+                     prp_vs_pos = n_vs_pos/n()) 
+
+summary(alldf$vs)
 
 plotdf = dplyr::left_join(alldf, ecotypes_data, by = 'ecotypeid')
 
@@ -202,13 +213,8 @@ for (myenv in envvars) {
     }
 }
 
-# plot the best fit linear model
-
-
-
-
-
 # output files --------
+save.image(file = paste0(outdir, 'ecotype_cline_bio1.RData'))
 
 # cleanup --------
 date()
