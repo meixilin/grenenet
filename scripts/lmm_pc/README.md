@@ -23,11 +23,14 @@ By multiplying ecotype frequency changes with founder VCF PC, we decomposed two 
 ## Submitting record
 
 > 2023-09-09 15:20:45
+> 2023-09-12 updates
 
 ```bash
 WORKDIR='/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/analyses'
 RSCRIPT=${WORKDIR}/scripts/lmm_pc/step0_prepare_data.R
-LOGFILE=${WORKDIR}/data/lmm_pc/logs/step0_prepare_data.log # 393456
+LOGFILE=${WORKDIR}/data/lmm_pc/logs/step0_prepare_data.log 
+# 393456
+# 412603
 ```
 
 > 2023-09-10 17:16:00
@@ -43,6 +46,7 @@ submit_lmm(){
     sbatchrr ${RSCRIPT} ${LOGFILE} ${envvar} ${mygen} 
 }
 
+# these were ran with code currently named as `ARCHIVE/step1_run_lmm.R`
 submit_lmm 'bio1' '1'
 submit_lmm 'bio1' '2'
 submit_lmm 'bio1' '3'
@@ -52,4 +56,7 @@ submit_lmm 'bio11' '3'
 submit_lmm 'bio19' '1'
 submit_lmm 'bio19' '2'
 submit_lmm 'bio19' '3'
+
+# new version with precalculated and LD pruned deltap
+submit_lmm 'bio19' '1' # 412313
 ```
