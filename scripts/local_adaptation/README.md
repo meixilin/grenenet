@@ -49,7 +49,6 @@ $$
 y = (u + a) + bx + \epsilon
 $$
 
-
 ### Per experimental site
 
 When taking this theory to a broader level, and considering all 231 ecotypes as one population, across the 231 ecotypes, we now have the same $w_\text{max}$. Here, we are evaluating if the strength of selection at different experimental sites is variable. To avoid confusion, we write this $V_s$ equivalent as $\tau$. $\tau$ is assumed to be constant across ecotypes within a site but variable between sites.
@@ -60,7 +59,7 @@ $$
 w = w_\text{max}\exp(-\frac{(x-x_0)^2}{\tau})
 $$
 
-For this model, we can use the regular linear regression model without the need for invoking the random intercept terms. 
+For this model, we can use the regular linear regression model without the need for invoking the random intercept terms.
 
 ## Scripts
 
@@ -70,19 +69,21 @@ For this model, we can use the regular linear regression model without the need 
 
 ## Submitting record
 
-> Wed Aug 30 12:46:57 2023
+> ARCHIVE: 2023-08-30; 2023-09-13
 
-``` bash
+```bash
+# 2023-09-14
 WORKDIR='/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/analyses'
+
+RSCRIPT=${WORKDIR}/scripts/local_adaptation/step0_prepare_data.R
+LOGFILE=${WORKDIR}/data/local_adaptation/logs/step0_prepare_data.log # 415299
+
 RSCRIPT=${WORKDIR}/scripts/local_adaptation/step1_ecotype_Vs.R
-LOGFILE=${WORKDIR}/data/local_adaptation/step1_ecotype_Vs.log # 385372
+LOGFILE=${WORKDIR}/data/local_adaptation/logs/step1_ecotype_Vs.log # 415300
 
 RSCRIPT=${WORKDIR}/scripts/local_adaptation/step2_site_tau.R
-LOGFILE=${WORKDIR}/data/local_adaptation/step2_site_tau.log
+LOGFILE=${WORKDIR}/data/local_adaptation/logs/step2_site_tau.log # 415301
+
+sbatchrr ${RSCRIPT} ${LOGFILE}
 ```
-
-> 2023-09-13 LMM version
-
-414939
-
 

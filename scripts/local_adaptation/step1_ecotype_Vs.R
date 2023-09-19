@@ -55,7 +55,7 @@ format_lmmsum <- function(tmpeco, mymodel, myenv) {
 run_lmm <- function(tmpeco, myenv) {
     # if no environment associated with this ecotype
     if (all(is.na(tmpeco[, myenv]))) {
-        lmres = null_lmsum(tmpeco)
+        lmres = null_lmmsum(tmpeco)
     } else {
         tmpeco = tmpeco %>% tidyr::drop_na()
         # run linear mixed model regression

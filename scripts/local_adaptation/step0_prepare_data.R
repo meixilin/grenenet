@@ -28,9 +28,17 @@ read_ecop0 <- function(indir) {
     return(outdf)
 }
 
+euclidean_denv <- function(row, ecotypedf) {
+    return((row - ecotypedf)^2)
+}
+
+raw_denv <- function(row, ecotypedf) {
+    return((row - ecotypedf))
+}
+
 # calculate distance in the forms of (x-x0)^2
-calc_env_dist <- function(ecotypedf, sitedf) {
-    sitedist = apply(sitedf[,-1], 1, function(row) (row - ecotypedf)^2) %>% t()
+calc_env_dist <- function(ecotypedf, sitedf, myfun) {
+    sitedist = apply(sitedf[,-1], 1, myfun, ecotypedf = ecotypedf) %>% t()
     sitedist = data.frame(sitedist) 
     sitedist$site = sitedf[,1] 
     return(sitedist)
@@ -83,6 +91,7 @@ dir.create(outdir, recursive = TRUE)
 # load data --------
 # ecotype data
 ecop <- read.delim('/NOBACKUP/scratch/xwu/grenet/merged_frequency/merged_ecotype_frequency.txt') # md5: 4272ec578c1c45511f45d9d92916fdb2
+summary(colSums(ecop))
 ecop0 <- read_ecop0('/NOBACKUP/scratch/xwu/grenet/hapFIRE_frequencies/seed_mix/')
 # add one column on the left for ecop ecotypeid
 ecop <- cbind(ecop0[,'ecotypeid'], ecop)
@@ -99,6 +108,7 @@ load('../metadata/data/locations_data.rda')
 all(colnames(worldclim_ecotypesdata)[-1] == colnames(worldclim_sitesdata)[-1])
 
 # add longitude and latitude for this study
+# TODO no reasonable altitude data available for ecotypes
 env_ecotypes = dplyr::left_join(worldclim_ecotypesdata, 
                                 ecotypes_data[,c('ecotypeid', 'longitude', 'latitude')], by = 'ecotypeid')
 env_sites = dplyr::left_join(worldclim_sitesdata, 
@@ -115,21 +125,36 @@ env_sites = env_sites %>%
 env_ecotypes = env_ecotypes %>% 
     tidyr::drop_na()
 
+# this will remove the ecotypes that had missing data
+# keep the original ecop and ecop0 in RData
+# TODO: if wanted, we can obtain worldclim for the ecotypes using a nearest neighbor approach
+ecop_231 = ecop
+ecop0_231 = ecop0
+
 ecop = ecop %>% 
     dplyr::filter(ecotypeid %in% env_ecotypes$ecotypeid)
 ecop0 = ecop0 %>% 
     dplyr::filter(ecotypeid %in% env_ecotypes$ecotypeid)
 
 # check that the ordering is correct
-all(env_ecotypes$ecotypeid == ecop$ecotypeid)
-all(ecop0$ecotypeid == ecop$ecotypeid)
+stopifnot(all(env_ecotypes$ecotypeid == ecop$ecotypeid))
+stopifnot(all(ecop0$ecotypeid == ecop$ecotypeid))
 
 # main --------
 # calculate distance of ecotypes and experimental sites ========
 # for each ecotype and each bioclim var, we calculate the euclidean distance to each site
 deltaenv = lapply(1:nrow(env_ecotypes), function(ii) {
     tmp = unlist(env_ecotypes[ii,-1]) # env vector for this ecotype
-    out = calc_env_dist(ecotypedf = tmp, sitedf = env_sites) %>% 
+    out = calc_env_dist(ecotypedf = tmp, sitedf = env_sites, myfun = euclidean_denv) %>% 
+        dplyr::mutate(ecotypeid = env_ecotypes[ii,'ecotypeid']) %>% 
+        dplyr::relocate(ecotypeid, site)
+    return(out)
+}) %>% dplyr::bind_rows()
+
+# add another deltaenv calculation for plotting
+deltaenv_raw = lapply(1:nrow(env_ecotypes), function(ii) {
+    tmp = unlist(env_ecotypes[ii,-1]) # env vector for this ecotype
+    out = calc_env_dist(ecotypedf = tmp, sitedf = env_sites, myfun = raw_denv) %>% 
         dplyr::mutate(ecotypeid = env_ecotypes[ii,'ecotypeid']) %>% 
         dplyr::relocate(ecotypeid, site)
     return(out)
@@ -140,6 +165,15 @@ ecop_l = ecop %>%
     reshape2::melt(id.var = 'ecotypeid', value.name = 'frequency', variable.name = 'sample_name') %>% 
     dplyr::mutate(sample_name = stringr::str_remove(sample_name, '^X')) %>% 
     dplyr::left_join(., y = merged_samples_data[, c('sample_name', 'site', 'generation', 'plot')], by = 'sample_name')
+
+# keep this long form in the step0_prepare_data.RData
+ecop_l231 = ecop_231 %>% 
+    reshape2::melt(id.var = 'ecotypeid', value.name = 'frequency', variable.name = 'sample_name') %>% 
+    dplyr::mutate(sample_name = stringr::str_remove(sample_name, '^X')) %>% 
+    dplyr::left_join(., y = merged_samples_data[, c('sample_name', 'site', 'generation', 'plot')], by = 'sample_name')
+
+dim(ecop)
+dim(ecop_231)
 
 # calculate environmental distances as a whole ========
 scoresbio <- pca_bio(env_ecotypes, env_sites)
@@ -154,10 +188,11 @@ hist(deltaenv$bioall) # most distances are small
 
 # TODO: can also use the Mahalanobis Distance
 
-
 # output files --------
 save(ecop0, ecop_l, deltaenv, file = paste0(outdir, 'ecotypefreqs_deltaenv.rda'))
+save.image(file = paste0(outdir, 'step0_prepare_data.RData'))
 
 # cleanup --------
 date()
 closeAllConnections()
+
