@@ -69,20 +69,23 @@ For this model, we can use the regular linear regression model without the need 
 
 ## Submitting record
 
-> ARCHIVE: 2023-08-30; 2023-09-13
+> ARCHIVE: 2023-08-30; 2023-09-13; 2023-09-15
 
 ```bash
-# 2023-09-14
+# Mon Sep 18 18:31:16 PDT 2023
 WORKDIR='/Carnegie/DPB/Data/Shared/Labs/Moi/Everyone/meixilin/grenenet/analyses'
 
 RSCRIPT=${WORKDIR}/scripts/local_adaptation/step0_prepare_data.R
-LOGFILE=${WORKDIR}/data/local_adaptation/logs/step0_prepare_data.log # 415299
+LOGFILE=${WORKDIR}/data/local_adaptation/logs/step0_prepare_data.log # 415354
 
 RSCRIPT=${WORKDIR}/scripts/local_adaptation/step1_ecotype_Vs.R
-LOGFILE=${WORKDIR}/data/local_adaptation/logs/step1_ecotype_Vs.log # 415300
+LOGFILE=${WORKDIR}/data/local_adaptation/logs/step1_ecotype_Vs.log # 415356
 
 RSCRIPT=${WORKDIR}/scripts/local_adaptation/step2_site_tau.R
-LOGFILE=${WORKDIR}/data/local_adaptation/logs/step2_site_tau.log # 415301
+LOGFILE=${WORKDIR}/data/local_adaptation/logs/step2_site_tau.log # 415357
+
+RSCRIPT=${WORKDIR}/scripts/local_adaptation/plot_local_adaptation.R
+LOGFILE=${WORKDIR}/data/local_adaptation/logs/plot_local_adaptation.log # 418601
 
 sbatchrr ${RSCRIPT} ${LOGFILE}
 ```
