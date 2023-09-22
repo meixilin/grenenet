@@ -46,7 +46,7 @@ mygen = as.character(args[2])
 print(envvar)
 print(mygen)
 
-myfm = as.formula(paste0('yy ~ ', paste(c(paste0('PC',1:5), envvar), collapse = ' + ')))
+myfm = as.formula(paste0('yy ~ ', paste(c(paste0('PC',1:3), envvar), collapse = ' + ')))
 print(myfm)
 
 outdir = '/NOBACKUP/scratch/meixilin/grenenet/lmm_pc/'
@@ -67,7 +67,7 @@ lmeres <- foreach(ii = 1:nrow(deltap), .combine = 'rbind', .errorhandling = 'rem
     yy = as.numeric(unlist(deltap[ii,]))
     .GlobalEnv$myfm <- myfm # fix a global env bug
     mydata = prep_lmm(yy, env_sites, envvar, pop_strc) 
-    model = nlme::lme(fixed = myfm, random = ~ 1|site, data = mydata) # 5 popstr PCs
+    model = nlme::lme(fixed = myfm, random = ~ 1|site, data = mydata) # 3 popstr PCs
     format_lmm(model, envvar) # output model results
 }
 
@@ -80,12 +80,12 @@ print(dim(lmeres))
 # preliminary plotting
 png(filename = paste0(outdir, 'qqplots/QQlme_', envvar, '_gen', mygen, '.png'), width = 10, height = 5, res = 300, units = 'in')
 par(mfrow = c(1,2))
-qqman::qq(lmeres[,'beta_p'], main = paste0('yy ~ PC1:5 + ', envvar))
-qqman::qq(lmeres[,'beta_p'], main = paste0('yy ~ PC1:5 + ', envvar), xlim = c(0,8), ylim = c(0,8))
+qqman::qq(lmeres[,'beta_p'], main = paste0('yy ~ PC1:3 + ', envvar, ' gen', mygen))
+qqman::qq(lmeres[,'beta_p'], main = paste0('yy ~ PC1:3 + ', envvar, ' gen', mygen), xlim = c(0,7), ylim = c(0,7))
 dev.off()
 
 # output files --------
-save(lmeres, file = paste0(outdir, 'lmeres_PC1t5_', envvar, '_gen', mygen, '.rda'))
+save(lmeres, file = paste0(outdir, 'lmeres_PC1to3_', envvar, '_gen', mygen, '.rda'))
 # no RData image saved as everything is stored in lmeres or printed in the logs
 
 # cleanup --------
