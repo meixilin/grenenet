@@ -33,6 +33,19 @@ load_ecotypeids <- function() {
     return(PC_ecotypeids)
 }
 
+# calculate ecotype frequency changes
+# need the order of ecotypeids to match to 
+scale_deltaeco <- function(ecodp, sourceids) {
+    ecop0_231 = loadSomeRData('ecop0_231', './data/local_adaptation/inputs/step0_prepare_data.RData') 
+    ecop0_231 = ecop0_231[match(sourceids, ecop0_231$ecotypeid), ]
+    stopifnot(all(ecop0_231$ecotypeid == sourceids))
+    # read the delta ecotype table
+    p0 = ecop0_231$p0
+    # calculate scaled changes
+    scaledp = ecodp / (p0*(1-p0))
+    return(scaledp)
+}
+
 # load mergeids based on merged_hapFIRE_allele_frequency.csv
 load_mergeids <- function() {
     mergeids = colnames(read.csv("/NOBACKUP/scratch/xwu/grenet/merged_frequency/merged_hapFIRE_allele_frequency.csv", nrows = 1)) %>% 
@@ -56,7 +69,7 @@ load_mergeids <- function() {
 load_normdeltap <- function() {
     # this file had a header V1,V2,V3, so you need to skip = 1 to read the first SNP (but fread also automatically find the header)
     # TODO: not able to verify the header, but assuming it's the same as merged_hapFIRE_allele_frequency.csv
-    infile = '/NOBACKUP/scratch/xwu/grenet/merged_frequency/merged_hapFIRE_delta_p_normed.txt' 
+    infile = '/NOBACKUP/scratch/xwu/grenet/merged_frequency/merged_hapFIRE_delta_p_normed.txt' # md5: 15429a61801e3f36c91385afc8c8ef21
     dt = data.table::fread(file = infile, skip = 1)
     return(dt)
 }
@@ -90,11 +103,12 @@ generations = 1:3
 # load founder VCF PCs
 PCs <- read.delim("/NOBACKUP/scratch/xwu/grenet/hapFIRE_updatedVCF/greneNet_final_v1.1_LDpruned_10PCs.txt",header = F,sep = " ")
 # load and calculate scaled ecotype frequency shifts 
-load('./data/local_adaptation/inputs/ecotypefreqs_deltaenv.rda')
-ecop <- read.delim("/NOBACKUP/scratch/xwu/grenet/merged_frequency/merged_ecotype_frequency.txt")
-ecop0 <- loadSomeRData(x = 'ecop0', file = )
-
 ecotypeids <- load_ecotypeids()
+ecodp = read.delim("/NOBACKUP/scratch/xwu/grenet/merged_frequency/delta_ecotype_freq.txt")
+print(summary(unlist(ecodp)))
+ecodp_sc = scale_deltaeco(ecodp, ecotypeids)
+print(summary(unlist(ecodp_sc)))
+ecodp_sc[1:5,1:5]
 
 # load deltap mergeid
 metadt0 = load_mergeids()
@@ -113,12 +127,15 @@ metadt_gen = base::split(metadt, metadt$generation)
 
 # load merged, normalized allele frequency change
 ndp = load_normdeltap()
+# prune merged, normalized allele frequency change for completely the same rows
 pruneids = prune_normdeltap(dt = ndp)
 table(pruneids)
-# prune merged, normalized allele frequency change for completely the same rows
 pndp = ndp[pruneids, ]
+# print some summary data for pndp
 dim(pndp)
 pndp[1:5,1:5]
+summary(unlist(pndp[sample(1:nrow(pndp), size = 1e+3), ]))
+# name it after merged_hapFIRE_delta_p_normed.txt
 save(pndp, file = paste0(outdir, 'pruned_merged_hapFIRE_delta_p_normed.rda'))
 
 # main --------
@@ -129,8 +146,9 @@ lapply(metadt_gen, function(env_sites) {
     mergeids = env_sites$mergeid
     # sanity check that this is unique
     stopifnot(all(!duplicated(mergeids)))
-    # subset ecodeltap for this generation
-    myecodeltap = t(as.matrix(ecodeltap[,paste0('X', mergeids)]))
+    # subset ecodp_sc for this generation
+    myecodeltap = t(as.matrix(ecodp_sc[,paste0('X', mergeids)]))
+    # assuming the ecodp file is ordered in the same ecotypeid order as the PCs files
     pop_strc = myecodeltap %*% as.matrix(PCs)
     dimnames(pop_strc)[[2]] = paste0('PC', 1:10)
     # subset pruned, merged, normalized allele frequency shifts for this generation
@@ -148,3 +166,6 @@ save.image(paste0(outdir, 'step0_prepare_data.RData'))
 # cleanup --------
 date()
 closeAllConnections()
+
+
+

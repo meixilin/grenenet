@@ -43,18 +43,21 @@ envvar = as.character(args[1])
 mygen = as.character(args[2])
 # envvar = 'bio1'
 # mygen = '2'
+print(envvar)
+print(mygen)
 
-myfm0 = as.formula(paste0('yy ~ ', envvar))
-myfm1 = as.formula(paste0('yy ~ ', paste(c(paste0('PC',1:10), envvar), collapse = ' + ')))
-myfm2 = as.formula(paste0('yy ~ ', paste(c(paste0('PC',1:5), envvar), collapse = ' + ')))
-myfm3 = as.formula(paste0('yy ~ ', paste(c(paste0('PC',1:3), envvar), collapse = ' + ')))
-print(myfm0); print(myfm1); print(myfm2); print(myfm3)
+myfm = as.formula(paste0('yy ~ ', paste(c(paste0('PC',1:5), envvar), collapse = ' + ')))
+print(myfm)
 
-outdir = '/NOBACKUP/scratch/meixilin/grenenet/lmm_pc/testpc_ldpruned/'
+outdir = '/NOBACKUP/scratch/meixilin/grenenet/lmm_pc/'
 dir.create(outdir, recursive = TRUE)
+dir.create(paste0(outdir, 'qqplots'))
 
 # load data --------
 load(paste0('./data/lmm_pc/inputs/envsites_popstrc_deltap_gen', mygen, '.rda'))
+# deltap = deltap[1:1000, ]
+print(dim(deltap))
+# plot(pop_strc[,1:3])
 
 # main --------
 # run the linear mixed model in a parallel for loop
@@ -62,43 +65,28 @@ load(paste0('./data/lmm_pc/inputs/envsites_popstrc_deltap_gen', mygen, '.rda'))
 # which means the result.ii row name is very meaningful if any error occurs 
 lmeres <- foreach(ii = 1:nrow(deltap), .combine = 'rbind', .errorhandling = 'remove') %dopar% {
     yy = as.numeric(unlist(deltap[ii,]))
-    .GlobalEnv$myfm0 <- myfm0
-    .GlobalEnv$myfm1 <- myfm1 # fix a global env bug
-    .GlobalEnv$myfm2 <- myfm2
-    .GlobalEnv$myfm3 <- myfm3
+    .GlobalEnv$myfm <- myfm # fix a global env bug
     mydata = prep_lmm(yy, env_sites, envvar, pop_strc) 
-    model0 = nlme::lme(fixed = myfm0, random = ~ 1|site, data = mydata) # old model without pop strc
-    model1 = nlme::lme(fixed = myfm1, random = ~ 1|site, data = mydata) # 10 popstr PCs
-    model2 = nlme::lme(fixed = myfm2, random = ~ 1|site, data = mydata) # 5 popstr PCs
-    model3 = nlme::lme(fixed = myfm3, random = ~ 1|site, data = mydata) # 3 popstr PCs
-    unlist(lapply(list(model0, model1, model2, model3), format_lmm, envvar = envvar))
+    model = nlme::lme(fixed = myfm, random = ~ 1|site, data = mydata) # 5 popstr PCs
+    format_lmm(model, envvar) # output model results
 }
 
-dimnames(lmeres)[[2]] = c('R2m.0', 'R2c.0', 'beta.0', 'beta_p.0', 'BIC.0',
-                          'R2m.1', 'R2c.1', 'beta.1', 'beta_p.1', 'BIC.1',
-                          'R2m.2', 'R2c.2', 'beta.2', 'beta_p.2', 'BIC.2')
+dimnames(lmeres)[[2]] = c('R2m', 'R2c', 'beta', 'beta_p', 'BIC')
 
-# these two values can be different if there were errors during the lme model 
+# these two number of rows can be different if there were errors during the lme model 
 print(dim(deltap))
 print(dim(lmeres))
 
 # preliminary plotting
-png(filename = paste0(outdir, 'QQlme_', envvar, '_gen', mygen, '.png'), width = 9, height = 4, res = 300, units = 'in')
-par(mfrow = c(1,3))
-qqman::qq(lmeres[,4], main = paste0('yy ~ ', envvar))
-qqman::qq(lmeres[,9], main = paste0('yy ~ PC1:10 + ', envvar))
-qqman::qq(lmeres[,14], main = paste0('yy ~ PC1:5 + ', envvar))
-dev.off()
-
-png(filename = paste0(outdir, 'QQlme_', envvar, '_gen', mygen, '_axis.png'), width = 9, height = 4, res = 300, units = 'in')
-par(mfrow = c(1,3))
-qqman::qq(lmeres[,4], main = paste0('yy ~ ', envvar), xlim = c(0,8), ylim = c(0,8))
-qqman::qq(lmeres[,9], main = paste0('yy ~ PC1:10 + ', envvar), xlim = c(0,8), ylim = c(0,8))
-qqman::qq(lmeres[,14], main = paste0('yy ~ PC1:5 + ', envvar), xlim = c(0,8), ylim = c(0,8))
+png(filename = paste0(outdir, 'qqplots/QQlme_', envvar, '_gen', mygen, '.png'), width = 10, height = 5, res = 300, units = 'in')
+par(mfrow = c(1,2))
+qqman::qq(lmeres[,'beta_p'], main = paste0('yy ~ PC1:5 + ', envvar))
+qqman::qq(lmeres[,'beta_p'], main = paste0('yy ~ PC1:5 + ', envvar), xlim = c(0,8), ylim = c(0,8))
 dev.off()
 
 # output files --------
-save(lmeres, file = paste0(outdir, 'lmeres_', envvar, '_gen', mygen, '.rda'))
+save(lmeres, file = paste0(outdir, 'lmeres_PC1t5_', envvar, '_gen', mygen, '.rda'))
+# no RData image saved as everything is stored in lmeres or printed in the logs
 
 # cleanup --------
 stopCluster(cl)
